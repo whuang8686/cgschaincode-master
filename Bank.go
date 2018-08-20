@@ -662,9 +662,9 @@ func (s *SmartContract) queryAllCptyISDA(APIstub shim.ChaincodeStubInterface, ar
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000001","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD"","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000002","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD"","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000003","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD"","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000001","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000002","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000003","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
 func (s *SmartContract) createFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 11 {
@@ -673,15 +673,15 @@ func (s *SmartContract) createFXTrade(APIstub shim.ChaincodeStubInterface, args 
 
 	var newAmount1, newAmount2, newNetPrice float64
 
-	newAmount1, err := strconv.ParseInt(args[7], 10, 64)
+	newAmount1, err := strconv.ParseFloat(args[7], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newAmount2, err = strconv.ParseInt(args[9], 10, 64)
+	newAmount2, err = strconv.ParseFloat(args[9], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newNetPrice, err = strconv.ParseInt(args[10], 10, 64)
+	newNetPrice, err = strconv.ParseFloat(args[10], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -696,7 +696,7 @@ func (s *SmartContract) createFXTrade(APIstub shim.ChaincodeStubInterface, args 
 	return shim.Success(nil)
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["updateFXTrade", "000001","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD"","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["updateFXTrade", "000001","CptyA","CptyB","2018/01/01","2018/12/31","USD/JPY","USD","31206192","JPY","9310367.3832","29.835"]}' -C myc
 func (s *SmartContract) updateFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 11 {
@@ -710,15 +710,15 @@ func (s *SmartContract) updateFXTrade(APIstub shim.ChaincodeStubInterface, args 
 
 	var newAmount1, newAmount2, newNetPrice float64
 
-	newAmount1, err := strconv.ParseInt(args[7], 10, 64)
+	newAmount1, err := strconv.ParseFloat(args[7], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newAmount2, err = strconv.ParseInt(args[9], 10, 64)
+	newAmount2, err = strconv.ParseFloat(args[9], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newNetPrice, err = strconv.ParseInt(args[10], 10, 64)
+	newNetPrice, err = strconv.ParseFloat(args[10], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -744,7 +744,7 @@ func (s *SmartContract) updateFXTrade(APIstub shim.ChaincodeStubInterface, args 
 	return shim.Success(nil)
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["deleteFXTrade", "000003"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["deleteFXTrade", "000001"]}' -C myc
 func (s *SmartContract) deleteFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {

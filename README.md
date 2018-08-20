@@ -7,7 +7,7 @@
 ### Testing Using dev mode：
 Navigate to the chaincode-docker-devmode directory of the fabric-samples clone:
 
-`cd cd fabric-samples`
+`cd fabric-samples`
 
 `cd chaincode-docker-devmode`
 
