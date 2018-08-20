@@ -1,12 +1,14 @@
 # cgschaincode
 ### Clear All docker & network
 `docker rm -f $(docker ps -aq)`
+
 `docker network prune`
 
 ### Testing Using dev mode：
 Navigate to the chaincode-docker-devmode directory of the fabric-samples clone:
 
 `cd cd fabric-samples`
+
 `cd chaincode-docker-devmode`
 
 ##### Terminal 1 - Start the network
