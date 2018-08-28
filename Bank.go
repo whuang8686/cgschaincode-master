@@ -93,17 +93,28 @@ type CptyISDA struct {
 
 type FXTrade struct {
 	ObjectType           string          `json:"docType"`             //docType is used to distinguish the various types of objects in state database
-	TradeID              string          `json:"TradeID"`
+	TXID                 string          `json:"TXID"`                //OwnCptyID + TXType + TimeNow
+	TXType               string          `json:"TXType"`              // Transaction TXType BUY or SELL
 	OwnCptyID            string          `json:"OwnCptyID"`
 	CptyID               string          `json:"CptyID"`              //交易對手
 	TradeDate            string          `json:"TradeDate"`           //交易日
 	MaturityDate         string          `json:"MaturityDate"`        //到期日
 	Contract             string          `json:"Contract"`            //交易合約 
-	Curr1                string          `json:"Curr1"`               //Curr1幣別
-	Amount1              float64         `json:"Amount1"`             //Amount1金額
-	Curr2                string          `json:"Curr2"`               //Curr2幣別
-	Amount2              float64         `json:"Amount2"`             //Amount2金額
+	Curr1                string          `json:"Curr1"`               //Curr1
+	Amount1              float64         `json:"Amount1"`             //Amount1
+	Curr2                string          `json:"Curr2"`               //Curr2
+	Amount2              float64         `json:"Amount2"`             //Amount2
 	NetPrice             float64         `json:"NetPrice"`            //合約價
+	
+	isPutToQueue         bool             `json:"isPutToQueue"`       //isPutToQueue = true 代表資料檢核成功
+	TXStatus             string           `json:"TXStatus"`           //Pending, Matched, Finished, Cancelled, PaymentError,
+	CreateTime           string           `json:"createTime"`         //建立時間
+	UpdateTime           string           `json:"updateTime"`         //更新時間
+	TXIndex              string           `json:"TXIndex"`            //Transaction Index(全部比對)
+	TXHcode              string           `json:"TXHcode"`            //Transaction Hcode(更正交易序號)
+	MatchedTXID          string           `json:"MatchedTXID"`        //比對序號
+	TXMemo               string           `json:"TXMemo"`             //交易說明
+	TXErrMsg             string           `json:"TXErrMsg"`           //交易錯誤說明
 }
 
 /*
@@ -146,16 +157,49 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	} else if function == "queryAllCptyISDA" {
 		return s.queryAllCptyISDA(APIstub, args)
 	//FXTrade
-	} else if function == "createFXTrade" {
-		return s.createFXTrade(APIstub, args)
-	} else if function == "updateFXTrade" {
-		return s.updateFXTrade(APIstub, args)
-	} else if function == "deleteFXTrade" {
-		return s.deleteFXTrade(APIstub, args)
-	} else if function == "queryFXTrade"  {
-		return s.queryFXTrade(APIstub, args)	
-	} else if function == "queryAllFXTrade" {
-		return s.queryAllFXTrade(APIstub, args)		
+	//} else if function == "createFXTrade" {
+	//	return s.createFXTrade(APIstub, args)
+	//} else if function == "updateFXTrade" {
+	//	return s.updateFXTrade(APIstub, args)
+	//} else if function == "deleteFXTrade" {
+	//	return s.deleteFXTrade(APIstub, args)
+	//} else if function == "queryFXTrade"  {
+	//	return s.queryFXTrade(APIstub, args)	
+	//} else if function == "queryAllFXTrade" {
+	//	return s.queryAllFXTrade(APIstub, args)	
+    // Transaction Functions
+    } else if function == "FXTradeTransfer" {
+    	return s.FXTradeTransfer(APIstub, args)
+	} else if function == "queryTXIDTransactions" {
+	    return s.queryTXIDTransactions(APIstub, args)
+	} else if function == "queryTXKEYTransactions" {
+	    return s.queryTXKEYTransactions(APIstub, args)
+	} else if function == "queryHistoryTXKEYTransactions" {
+	    return s.queryHistoryTXKEYTransactions(APIstub, args)
+	} else if function == "getHistoryForTransaction" {
+	    return s.getHistoryForTransaction(APIstub, args)
+	} else if function == "getHistoryTXIDForTransaction" {
+	    return s.getHistoryTXIDForTransaction(APIstub, args)
+	} else if function == "getHistoryForQueuedTransaction" {
+	    return s.getHistoryForQueuedTransaction(APIstub, args)
+	} else if function == "getHistoryTXIDForQueuedTransaction" {
+	    return s.getHistoryTXIDForQueuedTransaction(APIstub, args)
+	} else if function == "queryAllTransactions" {
+	    return s.queryAllTransactions(APIstub, args)
+	} else if function == "queryAllQueuedTransactions" {
+	    return s.queryAllQueuedTransactions(APIstub, args)
+	} else if function == "queryAllHistoryTransactions" {
+	    return s.queryAllHistoryTransactions(APIstub, args)
+	} else if function == "queryAllTransactionKeys" {
+	    return s.queryAllTransactionKeys(APIstub, args)
+	} else if function == "queryQueuedTransactionStatus" {
+	    return s.queryQueuedTransactionStatus(APIstub, args)
+	} else if function == "queryHistoryTransactionStatus" {
+	    return s.queryHistoryTransactionStatus(APIstub, args)
+	} else if function == "updateQueuedTransactionHcode" {
+	    return s.updateQueuedTransactionHcode(APIstub, args)
+	 } else if function == "updateHistoryTransactionHcode" {
+	    return s.updateHistoryTransactionHcode(APIstub, args)	
 	} else {
     //map functions
 		return s.mapFunction(APIstub, function, args)
@@ -665,7 +709,8 @@ func (s *SmartContract) queryAllCptyISDA(APIstub shim.ChaincodeStubInterface, ar
 //peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000001","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
 //peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000002","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
 //peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000003","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
-func (s *SmartContract) createFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+/* func (s *SmartContract) createFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 11 {
 		return shim.Error("Incorrect number of arguments. Expecting 11")
@@ -694,10 +739,10 @@ func (s *SmartContract) createFXTrade(APIstub shim.ChaincodeStubInterface, args 
 	}
 
 	return shim.Success(nil)
-}
+} */
 
 //peer chaincode invoke -n mycc -c '{"Args":["updateFXTrade", "000001","CptyA","CptyB","2018/01/01","2018/12/31","USD/JPY","USD","31206192","JPY","9310367.3832","29.835"]}' -C myc
-func (s *SmartContract) updateFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+/* func (s *SmartContract) updateFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 11 {
 		return shim.Error("Incorrect number of arguments. Expecting 11")
@@ -742,10 +787,10 @@ func (s *SmartContract) updateFXTrade(APIstub shim.ChaincodeStubInterface, args 
 	}
 
 	return shim.Success(nil)
-}
+} */
 
 //peer chaincode invoke -n mycc -c '{"Args":["deleteFXTrade", "000001"]}' -C myc
-func (s *SmartContract) deleteFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+/* func (s *SmartContract) deleteFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
@@ -758,10 +803,10 @@ func (s *SmartContract) deleteFXTrade(APIstub shim.ChaincodeStubInterface, args 
 	}
 
 	return shim.Success(nil)
-}
+} */
 
 //peer chaincode query -n mycc -c '{"Args":["queryFXTrade","000001"]}' -C myc
-func (s *SmartContract) queryFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+/* func (s *SmartContract) queryFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
@@ -769,10 +814,10 @@ func (s *SmartContract) queryFXTrade(APIstub shim.ChaincodeStubInterface, args [
 
 	FXTradeAsBytes, _ := APIstub.GetState(args[0])
 	return shim.Success(FXTradeAsBytes)
-}
+} */
 
 //peer chaincode query -n mycc -c '{"Args":["queryAllFXTrade","000001","999999"]}' -C myc
-func (s *SmartContract) queryAllFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+/* func (s *SmartContract) queryAllFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
@@ -816,7 +861,7 @@ func (s *SmartContract) queryAllFXTrade(APIstub shim.ChaincodeStubInterface, arg
 	fmt.Printf("%s", buffer.String())
 
 	return shim.Success(buffer.Bytes())
-}
+} */
 
 // The main function is only relevant in unit test mode. Only included here for completeness.
 func main() {
