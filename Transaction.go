@@ -282,8 +282,8 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc -v 1.0
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S""","CptyB","CptyA","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc -v 1.0
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","CptyB","CptyA","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
 
 peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "B","004000000001" , "004000000002" , "A07103" , "102000","100000","true"]}' -C myc
 peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "S","004000000002" , "004000000001" , "A07103" , "102000","100000","true"]}' -C myc
@@ -292,13 +292,16 @@ peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "S","002000000001
 peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "B","002000000002" , "002000000001" , "A07103" , "102000","100000","true"]}' -C myc
 
 */
+
 func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []string) peer.Response {
 
 	TimeNow := time.Now().Format(timelayout)
 
 	newTX, isPutInQueue, errMsg := validateTransaction(stub, args)
+
 	if errMsg != "" {
 		//return shim.Error(err.Error())
+		fmt.Println("errMsg= " + errMsg + "\n")
 		newTX.TXErrMsg = errMsg
 		newTX.TXStatus = "Cancelled"
 		newTX.TXMemo = "交易被取消"
@@ -348,6 +351,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 
 		historyAsBytes, err := stub.GetState(HTXKEY)
 		if err != nil {
+			fmt.Println("historyAsBytes,errMsg= " + errMsg + "\n")
 			newTX.TXErrMsg = HTXKEY + ":HistoryID does not exits."
 			newTX.TXStatus = "Cancelled"
 			newTX.TXMemo = "交易被取消"
@@ -356,12 +360,14 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 		json.Unmarshal(historyAsBytes, &historyNewTX)
 
 		if queueAsBytes == nil {
+			fmt.Println("queueAsBytes\n")
 			queuedTx.ObjectType = QueuedTXObjectType
 			queuedTx.TXKEY = TXKEY
 			queuedTx.Transactions = append(queuedTx.Transactions, newTX)
 			queuedTx.TXIndexs = append(queuedTx.TXIndexs, TXIndex)
 			queuedTx.TXIDs = append(queuedTx.TXIDs, TXID)
 			if historyAsBytes == nil {
+				fmt.Println("historyAsBytes\n")
 				historyNewTX.ObjectType = HistoryTXObjectType
 				historyNewTX.TXKEY = HTXKEY
 				historyNewTX.Transactions = append(historyNewTX.Transactions, newTX)
@@ -372,6 +378,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 			}
 		} else if queueAsBytes != nil {
 			for key, val := range queuedTx.Transactions {
+				fmt.Println("key " + val.TXID + "\n")
 				if val.TXIndex == TXIndex && val.TXStatus == TXStatus && val.OwnCptyID != OwnCptyID && val.TXType != TXType && val.TXID != TXID {
 					fmt.Println("1.TXIndex= " + TXIndex + "\n")
 					fmt.Println("2.OwnCptyID= " + OwnCptyID + "\n")
@@ -395,6 +402,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 						err = updateTransactionStatus(stub, val.TXID, "Matched", TXID)
 						if err != nil {
 							//return shim.Error(err.Error())
+							fmt.Println("updateTransactionStatus,err=\n")
 							newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Matched."
 							newTX.TXStatus = "Cancelled"
 							newTX.TXMemo = "交易被取消"
@@ -414,23 +422,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 				} 
 			}
 		}
-		if queueAsBytes != nil {
-			if historyAsBytes != nil {
-				queuedTx.ObjectType = QueuedTXObjectType
-				queuedTx.TXKEY = TXKEY
-				queuedTx.Transactions = append(queuedTx.Transactions, newTX)
-				queuedTx.TXIndexs = append(queuedTx.TXIndexs, TXIndex)
-				queuedTx.TXIDs = append(queuedTx.TXIDs, TXID)
-
-				historyNewTX.ObjectType = HistoryTXObjectType
-				historyNewTX.TXKEY = HTXKEY
-				historyNewTX.Transactions = append(historyNewTX.Transactions, newTX)
-				historyNewTX.TXIndexs = append(historyNewTX.TXIndexs, TXIndex)
-				historyNewTX.TXIDs = append(historyNewTX.TXIDs, TXID)
-				historyNewTX.TXStatus = append(historyNewTX.TXStatus, newTX.TXStatus)
-				historyNewTX.TXKinds = append(historyNewTX.TXKinds, TXKinds)
-			}
-		}
+		
 		QueuedAsBytes, err := json.Marshal(queuedTx)
 		err = stub.PutState(TXKEY, QueuedAsBytes)
 		if err != nil {
@@ -439,9 +431,11 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 		historyAsBytes, err = json.Marshal(historyNewTX)
 		err = stub.PutState(HTXKEY, historyAsBytes)
 		if err != nil {
+			
 			return shim.Error(err.Error())
 		}
 	}
+	fmt.Println("newTX.TXID= " + newTX.TXID + "\n")
 	TransactionAsBytes, err := json.Marshal(newTX)
 	if err != nil {
 		return shim.Error(err.Error())
@@ -454,14 +448,13 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 	return shim.Success(nil)
 }
 
-func validateTransaction(
-	stub shim.ChaincodeStubInterface,
-	args []string) (FXTrade, bool, string) {
+
+func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrade, bool, string) {
 	TimeNow := time.Now().Format(timelayout)
 	TimeNow2 := time.Now().Format(timelayout2)
 	var err error
 	var TXData,  TXIndex, TXID string
-
+	
 	transaction := FXTrade{}
 	transaction.ObjectType = TransactionObjectType
 	transaction.TXStatus = "Cancelled"
@@ -502,7 +495,7 @@ func validateTransaction(
 	if len(args[8]) <= 0 {
 		return transaction, false, "isPutToQueue flag must be a non-empty string."
 	}
-	isPutToQueue, err := strconv.ParseBool(strings.ToLower(args[6]))
+	isPutToQueue, err := strconv.ParseBool(strings.ToLower(args[8]))
 	if err != nil {
 		return transaction, false, "isPutToQueue must be a boolean string."
 	}
@@ -513,7 +506,6 @@ func validateTransaction(
 	}
 
 	transaction.TXType = TXType
-
 	OwnCptyID := strings.ToUpper(args[1])
 	CptyID := strings.ToUpper(args[2])
 	//if verifyIdentity(stub, OwnCptyID) != "" {
@@ -530,7 +522,6 @@ func validateTransaction(
 	}
 	transaction.OwnCptyID = OwnCptyID
 	transaction.CptyID = CptyID
-
 	TradeDate := args[3]
 	transaction.TradeDate = TradeDate
 
@@ -556,21 +547,18 @@ func validateTransaction(
 		TXData = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'e', 8 , 64)
 		TXIndex = getSHA256(TXData)
 	}
-
+	fmt.Println("6.validateTransaction= " + TimeNow + "\n")
 	if TXType == "B" {
 		TXData = CptyID + OwnCptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'e', 8 , 64)
 		TXIndex = getSHA256(TXData)
 	}
-
 	transaction.TXIndex = TXIndex
 	transaction.TXStatus = "Pending"
 	return transaction, true, ""
 
 }
 
-func getTransactionStructFromID(
-	stub shim.ChaincodeStubInterface,
-	TXID string) (*FXTrade, error) {
+func getTransactionStructFromID(stub shim.ChaincodeStubInterface,TXID string) (*FXTrade, error) {
 
 	var errMsg string
 	newTX := &FXTrade{}
@@ -2054,8 +2042,8 @@ func updateEndDayHistoryTransactionStatus(stub shim.ChaincodeStubInterface, HTXK
 	return nil
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "BANK002B00200000000120180408050918"]}' -C myc
-//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "BANK002B00200000000120180408051245"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "CPTYAB20180828133108"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "CPTYBS20180828134427"]}' -C myc
 
 func (s *SmartContract) queryTXIDTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -2075,7 +2063,7 @@ func (s *SmartContract) queryTXIDTransactions(APIstub shim.ChaincodeStubInterfac
 	return shim.Success(NewTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryTXKEYTransactions", "20180408"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXKEYTransactions", "20180828"]}' -C myc
 
 func (s *SmartContract) queryTXKEYTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -2095,7 +2083,7 @@ func (s *SmartContract) queryTXKEYTransactions(APIstub shim.ChaincodeStubInterfa
 	return shim.Success(QueuedTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryHistoryTXKEYTransactions", "H20180408"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryHistoryTXKEYTransactions", "H20180828"]}' -C myc
 func (s *SmartContract) queryHistoryTXKEYTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
@@ -2114,7 +2102,7 @@ func (s *SmartContract) queryHistoryTXKEYTransactions(APIstub shim.ChaincodeStub
 	return shim.Success(HistoryNewTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "BANK002B00200000000120180408050918"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "CPTYAB20180828133108"]}' -C myc
 
 func (s *SmartContract) getHistoryForTransaction(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -2181,7 +2169,7 @@ func (s *SmartContract) getHistoryForTransaction(APIstub shim.ChaincodeStubInter
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["getHistoryTXIDForTransaction","BK004S00400000000120180610041355","9476d9983cd1914d0c041b810d99dbbeee9f710bd03ee73ba71ff6770dc34b7a"]}' -C myc
+//**peer chaincode query -n mycc -c '{"Args":["getHistoryTXIDForTransaction","CPTYAB20180828133108","0656ba02342cc84cc0fd0b4b7d71a21c10ff835801c1ac846131f68a2fce3902"]}' -C myc
 func (s *SmartContract) getHistoryTXIDForTransaction(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) < 2 {
@@ -2246,7 +2234,7 @@ func (s *SmartContract) getHistoryTXIDForTransaction(APIstub shim.ChaincodeStubI
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["getHistoryForQueuedTransaction", "H20180415"]}' -C myc
+//**peer chaincode query -n mycc -c '{"Args":["getHistoryForQueuedTransaction", "H20180824"]}' -C myc
 
 func (s *SmartContract) getHistoryForQueuedTransaction(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -2378,15 +2366,15 @@ func (s *SmartContract) getHistoryTXIDForQueuedTransaction(APIstub shim.Chaincod
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllTransactions", "BANK002B00200000000120180408050918","BANK002B00200000000120180408051246"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryAllTransactions", "CPTYAB20180828133108","CPTYAB20180828143108"]}' -C myc
 
 func (s *SmartContract) queryAllTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
-	//TXID = BankFrom + TXType + TXFrom + TimeNow
-	//BANK002B00200000000120180406143001
+	//TXID = OwnCptyID + TXType + TimeNow
+	//CPTYAB20180828133108
 	startKey := args[0]
 	endKey := args[1]
 
@@ -2428,8 +2416,7 @@ func (s *SmartContract) queryAllTransactions(APIstub shim.ChaincodeStubInterface
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180408","20180409"]}' -C myc
-
+//peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180828","20180829"]}' -C myc
 func (s *SmartContract) queryAllQueuedTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -2575,7 +2562,7 @@ func (s *SmartContract) queryAllTransactionKeys(APIstub shim.ChaincodeStubInterf
 
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180609","Finished"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180828","Pending","CptyA"]}' -C myc
 func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 3 {

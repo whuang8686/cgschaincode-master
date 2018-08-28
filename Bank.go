@@ -169,7 +169,7 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	//	return s.queryAllFXTrade(APIstub, args)	
     // Transaction Functions
     } else if function == "FXTradeTransfer" {
-    	return s.FXTradeTransfer(APIstub, args)
+		return s.FXTradeTransfer(APIstub, args)
 	} else if function == "queryTXIDTransactions" {
 	    return s.queryTXIDTransactions(APIstub, args)
 	} else if function == "queryTXKEYTransactions" {
