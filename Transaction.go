@@ -2048,9 +2048,9 @@ func updateEndDayHistoryTransactionStatus(stub shim.ChaincodeStubInterface, HTXK
 	return nil
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "CPTYAB20180828133108"]}' -C myc
-//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "CPTYBS20180828134427"]}' -C myc
-
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0001B20180829062739"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0002S20180829063021"]}' -C myc
+//用TXID去查詢FXTrade，回傳一筆   
 func (s *SmartContract) queryTXIDTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
@@ -2069,8 +2069,8 @@ func (s *SmartContract) queryTXIDTransactions(APIstub shim.ChaincodeStubInterfac
 	return shim.Success(NewTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryTXKEYTransactions", "20180828"]}' -C myc
-
+//peer chaincode query -n mycc -c '{"Args":["queryTXKEYTransactions", "20180829"]}' -C myc
+//用TXKEY去查詢QueuedTransaction，回傳第一筆
 func (s *SmartContract) queryTXKEYTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
@@ -2089,7 +2089,8 @@ func (s *SmartContract) queryTXKEYTransactions(APIstub shim.ChaincodeStubInterfa
 	return shim.Success(QueuedTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryHistoryTXKEYTransactions", "H20180828"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryHistoryTXKEYTransactions", "H20180829"]}' -C myc
+//用TXKEY去查詢TransactionHistory，回傳第一筆
 func (s *SmartContract) queryHistoryTXKEYTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
@@ -2108,8 +2109,8 @@ func (s *SmartContract) queryHistoryTXKEYTransactions(APIstub shim.ChaincodeStub
 	return shim.Success(HistoryNewTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "CPTYAB20180828133108"]}' -C myc
-
+//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "20180829"]}' -C myc
+//用TXKEY去查詢TransactionHistory，回傳多筆
 func (s *SmartContract) getHistoryForTransaction(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) < 1 {
@@ -2175,7 +2176,7 @@ func (s *SmartContract) getHistoryForTransaction(APIstub shim.ChaincodeStubInter
 	return shim.Success(buffer.Bytes())
 }
 
-//**peer chaincode query -n mycc -c '{"Args":["getHistoryTXIDForTransaction","CPTYAB20180828133108","0656ba02342cc84cc0fd0b4b7d71a21c10ff835801c1ac846131f68a2fce3902"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["getHistoryTXIDForTransaction","0001B20180829062739","a643cbdcad37995bc1b94ca9503280e217d286111a6cef068a3f15283ae47563"]}' -C myc
 func (s *SmartContract) getHistoryTXIDForTransaction(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) < 2 {
@@ -2568,7 +2569,7 @@ func (s *SmartContract) queryAllTransactionKeys(APIstub shim.ChaincodeStubInterf
 
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180828","Pending","CptyA"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180829","Pending","0001"]}' -C myc
 func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 3 {
