@@ -112,7 +112,7 @@ type FXTrade struct {
 	UpdateTime           string           `json:"updateTime"`         //更新時間
 	TXIndex              string           `json:"TXIndex"`            //Transaction Index(全部比對)
 	TXHcode              string           `json:"TXHcode"`            //Transaction Hcode(更正交易序號)
-	MatchedTXID          string           `json:"MatchedTXID"`        //比對序號
+	MatchedTXID          string           `json:"MatchedTXID"`        //比對序號 OwnCptyID(後來新增的)+TXType+TimeNow 0002S20180829063021
 	TXMemo               string           `json:"TXMemo"`             //交易說明
 	TXErrMsg             string           `json:"TXErrMsg"`           //交易錯誤說明
 }

@@ -282,8 +282,8 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","CptyB","CptyA","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
 
 peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "B","004000000001" , "004000000002" , "A07103" , "102000","100000","true"]}' -C myc
 peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "S","004000000002" , "004000000001" , "A07103" , "102000","100000","true"]}' -C myc
@@ -323,7 +323,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 	doflg = false
 	TXKEY := SubString(TimeNow, 0, 8) //20060102150405
 	HTXKEY := "H" + TXKEY
-	TXDAY := SubString(TXID, 18, 8)
+	TXDAY := SubString(TXID, 5, 8)
 	if TXDAY < TXKEY {
 		TXKEY = TXDAY
 		HTXKEY = "H" + TXKEY
@@ -340,8 +340,10 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 	if isPutInQueue == true {
 		newTX.isPutToQueue = true
 		queueAsBytes, err := stub.GetState(TXKEY)
+		fmt.Println("isPutInQueue == true=" + TXKEY + "\n")
 		if err != nil {
 			//return shim.Error(err.Error())
+			fmt.Println("1.queueAsBytes= " + err.Error() + "\n")
 			newTX.TXErrMsg = TXKEY + ":QueueID does not exits."
 			newTX.TXStatus = "Cancelled"
 			newTX.TXMemo = "交易被取消"
@@ -351,7 +353,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 
 		historyAsBytes, err := stub.GetState(HTXKEY)
 		if err != nil {
-			fmt.Println("historyAsBytes,errMsg= " + errMsg + "\n")
+			fmt.Println("2.historyAsBytes,errMsg= " + err.Error() + "\n")
 			newTX.TXErrMsg = HTXKEY + ":HistoryID does not exits."
 			newTX.TXStatus = "Cancelled"
 			newTX.TXMemo = "交易被取消"
@@ -360,7 +362,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 		json.Unmarshal(historyAsBytes, &historyNewTX)
 
 		if queueAsBytes == nil {
-			fmt.Println("queueAsBytes\n")
+			fmt.Println("queueAsBytes == nil,queueAsBytes\n")
 			queuedTx.ObjectType = QueuedTXObjectType
 			queuedTx.TXKEY = TXKEY
 			queuedTx.Transactions = append(queuedTx.Transactions, newTX)
@@ -377,6 +379,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 				historyNewTX.TXKinds = append(historyNewTX.TXKinds, TXKinds)
 			}
 		} else if queueAsBytes != nil {
+			fmt.Println("queueAsBytes != nil,queueAsBytes\n")
 			for key, val := range queuedTx.Transactions {
 				fmt.Println("key " + val.TXID + "\n")
 				if val.TXIndex == TXIndex && val.TXStatus == TXStatus && val.OwnCptyID != OwnCptyID && val.TXType != TXType && val.TXID != TXID {
@@ -424,14 +427,17 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 		}
 		
 		QueuedAsBytes, err := json.Marshal(queuedTx)
+		fmt.Println("PutState.QueuedAsBytes=ok\n")
 		err = stub.PutState(TXKEY, QueuedAsBytes)
 		if err != nil {
+			fmt.Println("PutState.QueuedAsBytes= " + err.Error() + "\n")
 			return shim.Error(err.Error())
 		}
 		historyAsBytes, err = json.Marshal(historyNewTX)
+		fmt.Println("PutState.historyAsBytes=ok\n")
 		err = stub.PutState(HTXKEY, historyAsBytes)
 		if err != nil {
-			
+			fmt.Println("PutState.historyAsBytes= " + err.Error() + "\n")
 			return shim.Error(err.Error())
 		}
 	}
@@ -2374,7 +2380,7 @@ func (s *SmartContract) queryAllTransactions(APIstub shim.ChaincodeStubInterface
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 	//TXID = OwnCptyID + TXType + TimeNow
-	//CPTYAB20180828133108
+	//0001B20180828133108
 	startKey := args[0]
 	endKey := args[1]
 
@@ -2416,7 +2422,7 @@ func (s *SmartContract) queryAllTransactions(APIstub shim.ChaincodeStubInterface
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180828","20180829"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180829","20180830"]}' -C myc
 func (s *SmartContract) queryAllQueuedTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -2465,7 +2471,7 @@ func (s *SmartContract) queryAllQueuedTransactions(APIstub shim.ChaincodeStubInt
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllHistoryTransactions", "20180415","20180416"]}' -C myc -v 1.0
+//peer chaincode query -n mycc -c '{"Args":["queryAllHistoryTransactions", "20180829","20180830"]}' -C myc 
 func (s *SmartContract) queryAllHistoryTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -2514,7 +2520,7 @@ func (s *SmartContract) queryAllHistoryTransactions(APIstub shim.ChaincodeStubIn
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllTransactionKeys", "BANK002" , "BANK009"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryAllTransactionKeys", "0001" , "9999"]}' -C myc
 func (s *SmartContract) queryAllTransactionKeys(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) < 2 {
