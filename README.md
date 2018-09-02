@@ -1,4 +1,4 @@
-# cgschaincode
+# fxchaincode
 ### Clear All docker & network
 `docker rm -f $(docker ps -aq)`
 
@@ -16,22 +16,22 @@ Navigate to the chaincode-docker-devmode directory of the fabric-samples clone:
 ##### Terminal 2 - Build & start the chaincode
 `docker exec -it chaincode bash`
 
-`cd cgschaincode`
+`cd fxchaincode`
 
 `go build`
 
-`CORE_PEER_ADDRESS=peer:7052 CORE_CHAINCODE_ID_NAME=mycc:0 ./cgschaincode`
+`CORE_PEER_ADDRESS=peer:7052 CORE_CHAINCODE_ID_NAME=mycc:0 ./fxchaincode`
 ##### Terminal 3 - Use the chaincode
 `docker exec -it cli bash`
 
-`peer chaincode install -p chaincodedev/chaincode/cgschaincode -n mycc -v 0`
+`peer chaincode install -p chaincodedev/chaincode/fxchaincode -n mycc -v 0`
 
 `peer chaincode instantiate -n mycc -v 0 -c '{"Args":[""]}' -C myc`
 
 ##### Upgrade with the new version 1.0
-`CORE_PEER_ADDRESS=peer:7052 CORE_CHAINCODE_ID_NAME=mycc:1 ./cgschaincode`
+`CORE_PEER_ADDRESS=peer:7052 CORE_CHAINCODE_ID_NAME=mycc:1 ./fxchaincode`
 
-`peer chaincode install -p chaincodedev/chaincode/cgschaincode -n mycc -v 1`
+`peer chaincode install -p chaincodedev/chaincode/fxchaincode -n mycc -v 1`
 
 `peer chaincode upgrade -n mycc2 -v 1 -c '{"Args":[""]}' -C myc`
 
@@ -119,4 +119,4 @@ Navigate to the chaincode-docker-devmode directory of the fabric-samples clone:
 1. put(APIstub, function, args)
 1. remove(APIstub, function, args)
 1. keys(APIstub, function, args)
-1. query(APIstub, function, args)# cgschaincode-master
+1. query(APIstub, function, args)# fxchaincode-master
