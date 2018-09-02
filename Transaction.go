@@ -282,7 +282,7 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
 
 peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "B","004000000001" , "004000000002" , "A07103" , "102000","100000","true"]}' -C myc
@@ -470,7 +470,7 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 	transaction.CreateTime = TimeNow2
 	transaction.UpdateTime = TimeNow2
 
-	err = checkArgArrayLength(args, 9)
+	err = checkArgArrayLength(args, 12)
 	if err != nil {
 		return transaction, false, "The args-length must be 8."
 	}
@@ -499,9 +499,18 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 		return transaction, false, "Amount1 must be a non-empty string."
 	}
 	if len(args[8]) <= 0 {
+		return transaction, false, "Curr2 must be a non-empty string."
+	}
+	if len(args[9]) <= 0 {
+		return transaction, false, "Amount2 must be a non-empty string."
+	}
+    if len(args[10]) <= 0 {
+		return transaction, false, "NetPrice must be a non-empty string."
+	}
+	if len(args[11]) <= 0 {
 		return transaction, false, "isPutToQueue flag must be a non-empty string."
 	}
-	isPutToQueue, err := strconv.ParseBool(strings.ToLower(args[8]))
+	isPutToQueue, err := strconv.ParseBool(strings.ToLower(args[11]))
 	if err != nil {
 		return transaction, false, "isPutToQueue must be a boolean string."
 	}
@@ -547,6 +556,25 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 		return transaction, false, "Amount1 must be a positive value"
 	}
 	transaction.Amount1 = Amount1
+
+	Curr2 := strings.ToUpper(args[8])
+	transaction.Curr2 = Curr2
+
+	Amount2, err := strconv.ParseFloat(args[9], 64)
+	if err != nil {
+		return transaction, false, "Amount2 must be a numeric string."
+	} else if Amount2 < 0 {
+		return transaction, false, "Amount2 must be a positive value"
+	}
+	transaction.Amount2 = Amount2
+
+	NetPrice, err := strconv.ParseFloat(args[10], 64)
+	if err != nil {
+		return transaction, false, "NetPrice must be a numeric string."
+	} else if NetPrice < 0 {
+		return transaction, false, "NetPrice must be a positive value"
+	}
+	transaction.NetPrice = NetPrice
 
 	//TXData1 = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + Amount1 
 	if TXType == "S" {
@@ -2069,7 +2097,7 @@ func (s *SmartContract) queryTXIDTransactions(APIstub shim.ChaincodeStubInterfac
 	return shim.Success(NewTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryTXKEYTransactions", "20180829"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXKEYTransactions", "20180902"]}' -C myc
 //用TXKEY去查詢QueuedTransaction，回傳第一筆
 func (s *SmartContract) queryTXKEYTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
