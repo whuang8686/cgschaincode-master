@@ -283,7 +283,7 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 
 /* FXTrade交易比對
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
 
 peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "B","004000000001" , "004000000002" , "A07103" , "102000","100000","true"]}' -C myc
 peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "S","004000000002" , "004000000001" , "A07103" , "102000","100000","true"]}' -C myc
@@ -425,7 +425,23 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 				} 
 			}
 		}
-		
+		if queueAsBytes != nil {
+			if historyAsBytes != nil {
+				queuedTx.ObjectType = QueuedTXObjectType
+				queuedTx.TXKEY = TXKEY
+				queuedTx.Transactions = append(queuedTx.Transactions, newTX)
+				queuedTx.TXIndexs = append(queuedTx.TXIndexs, TXIndex)
+				queuedTx.TXIDs = append(queuedTx.TXIDs, TXID)
+
+				historyNewTX.ObjectType = HistoryTXObjectType
+				historyNewTX.TXKEY = HTXKEY
+				historyNewTX.Transactions = append(historyNewTX.Transactions, newTX)
+				historyNewTX.TXIndexs = append(historyNewTX.TXIndexs, TXIndex)
+				historyNewTX.TXIDs = append(historyNewTX.TXIDs, TXID)
+				historyNewTX.TXStatus = append(historyNewTX.TXStatus, newTX.TXStatus)
+				historyNewTX.TXKinds = append(historyNewTX.TXKinds, TXKinds)
+			}
+		}		
 		QueuedAsBytes, err := json.Marshal(queuedTx)
 		fmt.Println("PutState.QueuedAsBytes=ok\n")
 		err = stub.PutState(TXKEY, QueuedAsBytes)
@@ -2076,8 +2092,8 @@ func updateEndDayHistoryTransactionStatus(stub shim.ChaincodeStubInterface, HTXK
 	return nil
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0001B20180829062739"]}' -C myc
-//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0002S20180829063021"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0001B20180903083859"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0002S20180903060425"]}' -C myc
 //用TXID去查詢FXTrade，回傳一筆   
 func (s *SmartContract) queryTXIDTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -2137,7 +2153,9 @@ func (s *SmartContract) queryHistoryTXKEYTransactions(APIstub shim.ChaincodeStub
 	return shim.Success(HistoryNewTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "20180829"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "0002S20180903060425"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "0001B20180903060152"]}' -C myc
+
 //用TXKEY去查詢TransactionHistory，回傳多筆
 func (s *SmartContract) getHistoryForTransaction(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -2204,7 +2222,7 @@ func (s *SmartContract) getHistoryForTransaction(APIstub shim.ChaincodeStubInter
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["getHistoryTXIDForTransaction","0001B20180829062739","a643cbdcad37995bc1b94ca9503280e217d286111a6cef068a3f15283ae47563"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["getHistoryTXIDForTransaction","0002S20180903060425","7de652b09b8ee1eea3b0c7b17c0b515877014b37a227ee2fa76acc81b90a0bf3"]}' -C myc
 func (s *SmartContract) getHistoryTXIDForTransaction(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) < 2 {
@@ -2269,7 +2287,7 @@ func (s *SmartContract) getHistoryTXIDForTransaction(APIstub shim.ChaincodeStubI
 	return shim.Success(buffer.Bytes())
 }
 
-//**peer chaincode query -n mycc -c '{"Args":["getHistoryForQueuedTransaction", "H20180824"]}' -C myc
+//**peer chaincode query -n mycc -c '{"Args":["getHistoryForQueuedTransaction", "H20180903"]}' -C myc
 
 func (s *SmartContract) getHistoryForQueuedTransaction(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -2451,7 +2469,7 @@ func (s *SmartContract) queryAllTransactions(APIstub shim.ChaincodeStubInterface
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180829","20180830"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180903","20180903"]}' -C myc
 func (s *SmartContract) queryAllQueuedTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -2500,7 +2518,7 @@ func (s *SmartContract) queryAllQueuedTransactions(APIstub shim.ChaincodeStubInt
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllHistoryTransactions", "20180829","20180830"]}' -C myc 
+//peer chaincode query -n mycc -c '{"Args":["queryAllHistoryTransactions", "20180903","20180904"]}' -C myc 
 func (s *SmartContract) queryAllHistoryTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -2597,7 +2615,7 @@ func (s *SmartContract) queryAllTransactionKeys(APIstub shim.ChaincodeStubInterf
 
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180829","Pending","0001"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180904","Pending","0001"]}' -C myc
 func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 3 {
@@ -2605,7 +2623,7 @@ func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubI
 	}
 	TXKEY := args[0]
 	TXStatus := args[1]
-	BankID := args[2]
+	CptyID := args[2]
 
 	QueuedAsBytes, _ := APIstub.GetState(TXKEY)
 	QueuedTX := QueuedTransaction{}
@@ -2622,7 +2640,8 @@ func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubI
 	buffer.WriteString(",\"Transactions\":[")
 	bArrayMemberAlreadyWritten := false
 	for key, val := range QueuedTX.Transactions {
-		if (val.TXStatus == TXStatus || TXStatus == "All") && (val.OwnCptyID == BankID || val.CptyID == BankID || BankID == "All") {
+
+		if (val.TXStatus == TXStatus || TXStatus == "All") && (val.OwnCptyID == CptyID || val.CptyID == CptyID || CptyID == "All") {
 			// Add a comma before array members, suppress it for the first array member
 			if bArrayMemberAlreadyWritten == true {
 				buffer.WriteString(",")
@@ -2643,9 +2662,9 @@ func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubI
 			buffer.WriteString("\"")
 			buffer.WriteString(QueuedTX.Transactions[key].OwnCptyID)
 			buffer.WriteString("\"")
-			buffer.WriteString(", \"OwnCptyID\":")
+			buffer.WriteString(", \"CptyID\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(QueuedTX.Transactions[key].OwnCptyID)
+			buffer.WriteString(QueuedTX.Transactions[key].CptyID)
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TradeDate\":")
 			buffer.WriteString("\"")
@@ -2665,7 +2684,19 @@ func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubI
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"Amount1\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].Amount1,'e', 8 , 64))
+			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].Amount1,'f', 8, 64))
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"Curr2\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(QueuedTX.Transactions[key].Curr2)
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"Amount2\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].Amount2,'f', 8, 64))
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"NetPrice\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].NetPrice,'f', 8, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TXStatus\":")
 			buffer.WriteString("\"")
@@ -2724,7 +2755,7 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 	}
 	HTXKEY := args[0]
 	TXStatus := args[1]
-	BankID := args[2]
+	CptyID := args[2]
 
 	HistoryAsBytes, _ := APIstub.GetState(HTXKEY)
 	HistoryTX := TransactionHistory{}
@@ -2741,7 +2772,7 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 	buffer.WriteString(",\"Transactions\":[")
 	bArrayMemberAlreadyWritten := false
 	for key, val := range HistoryTX.Transactions {
-		if (val.TXStatus == TXStatus || TXStatus == "All") && (val.OwnCptyID == BankID || val.CptyID == BankID || BankID == "All") {
+		if (val.TXStatus == TXStatus || TXStatus == "All") && (val.OwnCptyID == CptyID || val.CptyID == CptyID || CptyID == "All") {
 			if bArrayMemberAlreadyWritten == true {
 				buffer.WriteString(",")
 			}
@@ -2761,9 +2792,9 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 			buffer.WriteString("\"")
 			buffer.WriteString(HistoryTX.Transactions[key].OwnCptyID)
 			buffer.WriteString("\"")
-			buffer.WriteString(", \"OwnCptyID\":")
+			buffer.WriteString(", \"CptyID\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(HistoryTX.Transactions[key].OwnCptyID)
+			buffer.WriteString(HistoryTX.Transactions[key].CptyID)
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TradeDate\":")
 			buffer.WriteString("\"")
@@ -2783,7 +2814,19 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"Amount1\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].Amount1,'e', 8 , 64))
+			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].Amount1,'f', 8, 64))
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"Curr2\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(HistoryTX.Transactions[key].Curr2)
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"Amount2\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].Amount2,'f', 8, 64))
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"NetPrice\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].NetPrice,'f', 8, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TXStatus\":")
 			buffer.WriteString("\"")
