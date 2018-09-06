@@ -46,8 +46,6 @@ type TransactionHistory struct {
 	Transactions []FXTrade     `json:"Transactions"`   // 當日交易資料
 }
 
-
-
 /*
 peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK004B00400000000120180415070724","0","BANKCBC"]}' -C myc -v 9.0
 peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S00200000000120180415065316","0","BANKCBC"]}' -C myc -v 9.0
@@ -526,6 +524,7 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 	if len(args[11]) <= 0 {
 		return transaction, false, "isPutToQueue flag must be a non-empty string."
 	}
+
 	isPutToQueue, err := strconv.ParseBool(strings.ToLower(args[11]))
 	if err != nil {
 		return transaction, false, "isPutToQueue must be a boolean string."
@@ -592,14 +591,14 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 	}
 	transaction.NetPrice = NetPrice
 
-	//TXData1 = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + Amount1 
+	//TXData = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + Amount1 
 	if TXType == "S" {
-		TXData = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'e', 8 , 64)
+		TXData = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'f', 4, 64)
 		TXIndex = getSHA256(TXData)
 	}
 	fmt.Println("6.validateTransaction= " + TimeNow + "\n")
 	if TXType == "B" {
-		TXData = CptyID + OwnCptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'e', 8 , 64)
+		TXData = CptyID + OwnCptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'f', 4, 64)
 		TXIndex = getSHA256(TXData)
 	}
 	transaction.TXIndex = TXIndex
@@ -1248,10 +1247,13 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 	return shim.Success(historyAsBytes)
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["securityCorrectTransfer", "S","004000000001" , "002000000001" , "A07106" , "102000","100000","true","BANK002B00200000000120180606155851"]}' -C myc
-/* func (s *SmartContract) securityCorrectTransfer(
-	stub shim.ChaincodeStubInterface,
-	args []string) peer.Response {
+/*
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
+peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180906","Pending","0001"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["CorrectFXTradeTransfer", "B","0001","0002","2018/09/01","2018/11/30","USD/TWD","USD","1000000","ZAR","1000000","30","true","0001B20180906123212"]}' -C myc 
+OwnCptyID不能修改，如要修改直接刪除後再新增
+*/
+ func (s *SmartContract) CorrectFXTradeTransfer(stub shim.ChaincodeStubInterface,args []string) peer.Response {
 
 	TimeNow := time.Now().Format(timelayout)
 
@@ -1263,16 +1265,9 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 		newTX.TXMemo = "交易被取消"
 	}
 	TXIndex := newTX.TXIndex
-	TXSIndex := newTX.TXSIndex
 	TXID := newTX.TXID
 	TXType := newTX.TXType
-	SecurityID := newTX.SecurityID
-	TXFrom := newTX.TXFrom
-	TXTo := newTX.TXTo
-	BankFrom := newTX.BankFrom
-	BankTo := newTX.BankTo
-	Payment := newTX.Payment
-	SecurityAmount := newTX.SecurityAmount
+	OwnCptyID := newTX.OwnCptyID
 	TXStatus := newTX.TXStatus
 	TXHcode := newTX.TXHcode
 
@@ -1281,46 +1276,13 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 	doflg = false
 	TXKEY := SubString(TimeNow, 0, 8) //A0710220180326
 	HTXKEY := "H" + TXKEY
-	TXDAY := SubString(TXID, 18, 8)
+	TXDAY := SubString(TXID, 5, 8)
 	if TXDAY < TXKEY {
 		TXKEY = TXDAY
 		HTXKEY = "H" + TXKEY
 	}
-	if BankFrom != BankTo {
-		if SecurityAmount == 0 {
-			if TXType == "S" {
-				TXKinds = "跨行FOP轉出"
-			} else {
-				TXKinds = "跨行FOP轉入"
-			}
-		} else {
-			if TXType == "S" {
-				TXKinds = "跨行DVP轉出"
-			} else {
-				TXKinds = "跨行DVP轉入"
-			}
-		}
-	} else {
-		if SecurityAmount == 0 {
-			if TXType == "S" {
-				TXKinds = "自行FOP轉出"
-			} else {
-				TXKinds = "自行FOP轉入"
-			}
-		} else {
-			if TXType == "S" {
-				TXKinds = "自行DVP轉出"
-			} else {
-				TXKinds = "自行DVP轉入"
-			}
-		}
-	}
-	ApproveFlag := approved0
-	ValueAsBytes, err := stub.GetState("approveflag")
-	if err == nil {
-		ApproveFlag = string(ValueAsBytes)
-	}
-	fmt.Printf("1.ApproveFlagCorrect=%s\n", ApproveFlag)
+
+	fmt.Printf("1.StartCorrect=%s\n")
 
 	if isPutInQueue == true {
 		newTX.isPutToQueue = true
@@ -1348,7 +1310,7 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 		json.Unmarshal(historyAsBytes, &historyNewTX)
 
 		fmt.Println("01.CTXIndex= " + TXIndex + "\n")
-		fmt.Println("02.CTXFrom= " + TXFrom + "\n")
+		fmt.Println("02.OwnCptyID= " + OwnCptyID + "\n")
 		fmt.Println("03.CTXType= " + TXType + "\n")
 		fmt.Println("04.CTXID= " + TXID + "\n")
 		fmt.Println("05.CTXStatus= " + TXStatus + "\n")
@@ -1359,23 +1321,20 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 			queuedTx.TXKEY = TXKEY
 			queuedTx.Transactions = append(queuedTx.Transactions, newTX)
 			queuedTx.TXIndexs = append(queuedTx.TXIndexs, TXIndex)
-			queuedTx.TXSIndexs = append(queuedTx.TXSIndexs, TXSIndex)
 			queuedTx.TXIDs = append(queuedTx.TXIDs, TXID)
 			if historyAsBytes == nil {
 				historyNewTX.ObjectType = HistoryTXObjectType
 				historyNewTX.TXKEY = HTXKEY
 				historyNewTX.Transactions = append(historyNewTX.Transactions, newTX)
 				historyNewTX.TXIndexs = append(historyNewTX.TXIndexs, TXIndex)
-				historyNewTX.TXSIndexs = append(historyNewTX.TXSIndexs, TXSIndex)
 				historyNewTX.TXIDs = append(historyNewTX.TXIDs, TXID)
 				historyNewTX.TXStatus = append(historyNewTX.TXStatus, newTX.TXStatus)
-				historyNewTX.TXKinds = append(historyNewTX.TXKinds, TXKinds)
 			}
 		} else if queueAsBytes != nil {
 			for key, val := range queuedTx.Transactions {
-				if val.TXIndex == TXIndex && val.TXStatus == TXStatus && val.TXFrom != TXFrom && val.TXType != TXType && val.TXID != TXID {
+				if val.TXIndex == TXIndex && val.TXStatus == TXStatus && val.OwnCptyID != OwnCptyID && val.TXType != TXType && val.TXID != TXID {
 					fmt.Println("1.TXIndex= " + TXIndex + "\n")
-					fmt.Println("2.TXFrom= " + TXFrom + "\n")
+					fmt.Println("2.OwnCptyID= " + OwnCptyID + "\n")
 					fmt.Println("3.TXType= " + TXType + "\n")
 					fmt.Println("4.TXID= " + TXID + "\n")
 					fmt.Println("5.val.TXID= " + val.TXID + "\n")
@@ -1408,244 +1367,9 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 						queuedTx.Transactions[key].TXMemo = ""
 						historyNewTX.Transactions[key].TXMemo = ""
 						newTX.TXMemo = ""
-						if TXType == "S" {
-							//轉出          轉入
-							senderBalance, receiverBalance, senderPendingBalance, receiverPendingBalance, err := updateAccountBalance(stub, SecurityID, SecurityAmount, Payment, TXFrom, TXTo)
-							senderBalance, receiverBalance, err = updateSecurityAmount(stub, SecurityID, Payment, SecurityAmount, TXFrom, TXTo)
-							if BankFrom != BankTo {
-								err = updateBankTotals(stub, TXFrom, SecurityID, TXFrom, Payment, SecurityAmount, true)
-								if err != nil {
-									//return shim.Error(err.Error())
-									newTX.TXErrMsg = "Failed to execute updateBankTotals TXFrom:" + TXFrom
-									newTX.TXStatus = "Cancelled"
-									newTX.TXMemo = "交易被取消"
-									break
-								}
-								err = updateBankTotals(stub, TXTo, SecurityID, TXTo, Payment, SecurityAmount, false)
-								if err != nil {
-									//return shim.Error(err.Error())
-									newTX.TXErrMsg = "Failed to execute updateBankTotals2 TXTo:" + TXTo
-									newTX.TXStatus = "Cancelled"
-									newTX.TXMemo = "交易被取消"
-									break
-								}
-							}
-							if (senderBalance < 0) || (receiverBalance < 0) || (senderPendingBalance < 0) || (receiverPendingBalance < 0) {
-								//return shim.Error("TxType=S - senderBalance or receiverBalance <0")
-								newTX.TXErrMsg = "TxType=S - senderBalance or receiverBalance or senderPendingBalance or receiverPendingBalance <0"
-								newTX.TXStatus = "Cancelled"
-								newTX.TXMemo = "交易被取消"
-								break
-							}
-
-						}
-						if TXType == "B" {
-							//轉出          轉入
-							senderBalance, receiverBalance, senderPendingBalance, receiverPendingBalance, err := updateAccountBalance(stub, SecurityID, SecurityAmount, Payment, TXTo, TXFrom)
-							senderBalance, receiverBalance, err = updateSecurityAmount(stub, SecurityID, Payment, SecurityAmount, TXTo, TXFrom)
-							if BankFrom != BankTo {
-								err = updateBankTotals(stub, TXFrom, SecurityID, TXFrom, Payment, SecurityAmount, false)
-								if err != nil {
-									//return shim.Error(err.Error())
-									newTX.TXErrMsg = "Failed to execute updateBankTotals TXFrom:" + TXFrom
-									newTX.TXStatus = "Cancelled"
-									newTX.TXMemo = "交易被取消"
-									break
-								}
-								err = updateBankTotals(stub, TXTo, SecurityID, TXTo, Payment, SecurityAmount, true)
-								if err != nil {
-									//return shim.Error(err.Error())
-									newTX.TXErrMsg = "Failed to execute updateBankTotals2 TXTo:" + TXTo
-									newTX.TXStatus = "Cancelled"
-									newTX.TXMemo = "交易被取消"
-									break
-								}
-							}
-							if (senderBalance < 0) || (receiverBalance < 0) || (senderPendingBalance < 0) || (receiverPendingBalance < 0) {
-								//return shim.Error("TxType=B - senderBalance or receiverBalance <0")
-								newTX.TXErrMsg = "TxType=B - senderBalance or receiverBalance or senderPendingBalance or receiverPendingBalance <0"
-								newTX.TXStatus = "Cancelled"
-								newTX.TXMemo = "交易被取消"
-								break
-							}
-
-						}
-						newTX.IsFrozen = true
-						queuedTx.Transactions[key].IsFrozen = true
-						historyNewTX.Transactions[key].IsFrozen = true
-						if BankFrom != BankTo {
-							if SecurityAmount != 0 {
-								if ApproveFlag == approved0 {
-									queuedTx.Transactions[key].TXStatus = "Finished"
-									historyNewTX.Transactions[key].TXStatus = "Finished"
-									historyNewTX.TXStatus[key] = "Finished"
-									newTX.TXStatus = "Finished"
-									queuedTx.Transactions[key].TXMemo = ""
-									historyNewTX.Transactions[key].TXMemo = ""
-									newTX.TXMemo = ""
-									err := updateTransactionStatus(stub, val.TXID, "Finished", TXID)
-									if err != nil {
-										//return shim.Error(err.Error())
-										newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Finished."
-										//newTX.TXStatus = "Cancelled"
-										break
-									}
-								} else if ApproveFlag == approved2 {
-									queuedTx.Transactions[key].TXStatus = "PaymentError"
-									historyNewTX.Transactions[key].TXStatus = "PaymentError"
-									historyNewTX.TXStatus[key] = "PaymentError"
-									newTX.TXStatus = "PaymentError"
-									queuedTx.Transactions[key].TXMemo = "款不足等待補款"
-									historyNewTX.Transactions[key].TXMemo = "款不足等待補款"
-									newTX.TXMemo = "款不足等待補款"
-									err := updateTransactionStatus(stub, val.TXID, "PaymentError", TXID)
-									if err != nil {
-										//return shim.Error(err.Error())
-										newTX.TXErrMsg = "Failed to execute updateTransactionStatus = PaymentError."
-										//newTX.TXStatus = "Cancelled"
-										break
-									}
-								} else if ApproveFlag == approved5 {
-									_, _, securityamount, _, _ := checkAccountBalance(stub, SecurityID, Payment, SecurityAmount, TXFrom, TXType, -1)
-									fmt.Printf("1-1.Account securityamount=%s\n", securityamount)
-									fmt.Printf("1-2.Transaction SecurityAmount=%s\n", SecurityAmount)
-									fmt.Printf("1-3.Approved errMsg=%s\n", errMsg)
-									if securityamount < SecurityAmount {
-										queuedTx.Transactions[key].TXStatus = "PaymentError"
-										historyNewTX.Transactions[key].TXStatus = "PaymentError"
-										historyNewTX.TXStatus[key] = "PaymentError"
-										newTX.TXStatus = "PaymentError"
-										queuedTx.Transactions[key].TXMemo = "款不足等待補款"
-										historyNewTX.Transactions[key].TXMemo = "款不足等待補款"
-										newTX.TXMemo = "款不足等待補款"
-										err := updateTransactionStatus(stub, val.TXID, "PaymentError", TXID)
-										if err != nil {
-											//return shim.Error(err.Error())
-											newTX.TXErrMsg = "Failed to execute updateTransactionStatus = PaymentError."
-											//newTX.TXStatus = "Cancelled"
-											break
-										}
-									} else {
-										queuedTx.Transactions[key].TXStatus = "Finished"
-										historyNewTX.Transactions[key].TXStatus = "Finished"
-										historyNewTX.TXStatus[key] = "Finished"
-										newTX.TXStatus = "Finished"
-										queuedTx.Transactions[key].TXMemo = ""
-										historyNewTX.Transactions[key].TXMemo = ""
-										newTX.TXMemo = ""
-										err := updateTransactionStatus(stub, val.TXID, "Finished", TXID)
-										if err != nil {
-											//return shim.Error(err.Error())
-											newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Finished."
-											//newTX.TXStatus = "Cancelled"
-											break
-										}
-									}
-								} else {
-									queuedTx.Transactions[key].TXStatus = "Waiting4Payment"
-									historyNewTX.Transactions[key].TXStatus = "Waiting4Payment"
-									historyNewTX.TXStatus[key] = "Waiting4Payment"
-									newTX.TXStatus = "Waiting4Payment"
-									queuedTx.Transactions[key].TXMemo = "等待回應"
-									historyNewTX.Transactions[key].TXMemo = "等待回應"
-									newTX.TXMemo = "等待回應"
-									err := updateTransactionStatus(stub, val.TXID, "Waiting4Payment", TXID)
-									if err != nil {
-										//return shim.Error(err.Error())
-										newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Waiting4Payment."
-										//newTX.TXStatus = "Cancelled"
-										break
-									}
-								}
-							} else {
-								queuedTx.Transactions[key].TXStatus = "Finished"
-								historyNewTX.Transactions[key].TXStatus = "Finished"
-								historyNewTX.TXStatus[key] = "Finished"
-								newTX.TXStatus = "Finished"
-								queuedTx.Transactions[key].TXMemo = ""
-								historyNewTX.Transactions[key].TXMemo = ""
-								newTX.TXMemo = ""
-								err := updateTransactionStatus(stub, val.TXID, "Finished", TXID)
-								if err != nil {
-									//return shim.Error(err.Error())
-									newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Finished."
-									//newTX.TXStatus = "Cancelled"
-									break
-								}
-							}
-						} else {
-							queuedTx.Transactions[key].TXStatus = "Finished"
-							historyNewTX.Transactions[key].TXStatus = "Finished"
-							historyNewTX.TXStatus[key] = "Finished"
-							newTX.TXStatus = "Finished"
-							queuedTx.Transactions[key].TXMemo = ""
-							historyNewTX.Transactions[key].TXMemo = ""
-							newTX.TXMemo = ""
-							err := updateTransactionStatus(stub, val.TXID, "Finished", TXID)
-							if err != nil {
-								//return shim.Error(err.Error())
-								newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Finished."
-								//newTX.TXStatus = "Cancelled"
-								break
-							}
-						}
-
+						
 						doflg = true
 						break
-					}
-				} else {
-					fmt.Println("1.TXSIndex= " + TXSIndex + "\n")
-					if val.TXSIndex == TXSIndex && val.TXStatus == TXStatus && val.TXIndex != TXIndex && val.TXFrom != TXFrom && val.TXType != TXType && val.TXID != TXID {
-						if TXStatus == "Pending" && val.TXStatus == "Pending" {
-							if (SecurityAmount != val.SecurityAmount) && (Payment == val.Payment) {
-								if SecurityAmount != val.SecurityAmount {
-									newTX.MatchedTXID = val.TXID
-									queuedTx.Transactions[key].MatchedTXID = TXID
-									historyNewTX.Transactions[key].MatchedTXID = TXID
-									newTX.TXMemo = "交易金額疑輸錯"
-									queuedTx.Transactions[key].TXMemo = "交易金額疑輸錯"
-									historyNewTX.Transactions[key].TXMemo = "交易金額疑輸錯"
-									newTX.TXErrMsg = "SecurityAmount != val.SecurityAmount"
-									queuedTx.Transactions[key].TXErrMsg = "SecurityAmount != val.SecurityAmount"
-									historyNewTX.Transactions[key].TXErrMsg = "SecurityAmount != val.SecurityAmount"
-								}
-							}
-							if (SecurityAmount == val.SecurityAmount) && (Payment != val.Payment) {
-								if Payment != val.Payment {
-									newTX.MatchedTXID = val.TXID
-									queuedTx.Transactions[key].MatchedTXID = TXID
-									historyNewTX.Transactions[key].MatchedTXID = TXID
-									newTX.TXMemo = "交易面額疑輸錯"
-									queuedTx.Transactions[key].TXMemo = "交易面額疑輸錯"
-									historyNewTX.Transactions[key].TXMemo = "交易面額疑輸錯"
-									newTX.TXErrMsg = "Payment != val.Payment"
-									queuedTx.Transactions[key].TXErrMsg = "Payment != val.Payment"
-									historyNewTX.Transactions[key].TXErrMsg = "Payment != val.Payment"
-								}
-							}
-						}
-						if val.TXMemo == "轉出方券不足" && val.TXType == "S" {
-							newTX.MatchedTXID = val.TXID
-							queuedTx.Transactions[key].MatchedTXID = TXID
-							historyNewTX.Transactions[key].MatchedTXID = TXID
-							newTX.TXMemo = "轉出方券不足"
-							queuedTx.Transactions[key].TXMemo = "轉出方券不足"
-							historyNewTX.Transactions[key].TXMemo = "轉出方券不足"
-							newTX.TXErrMsg = val.TXFrom + ":" + val.TXErrMsg
-							queuedTx.Transactions[key].TXErrMsg = val.TXFrom + ":" + val.TXErrMsg
-							historyNewTX.Transactions[key].TXErrMsg = val.TXFrom + ":" + val.TXErrMsg
-						}
-						if val.TXMemo == "轉入方款不足" && val.TXType == "B" {
-							newTX.MatchedTXID = val.TXID
-							queuedTx.Transactions[key].MatchedTXID = TXID
-							historyNewTX.Transactions[key].MatchedTXID = TXID
-							newTX.TXMemo = "轉入方款不足"
-							queuedTx.Transactions[key].TXMemo = "轉入方款不足"
-							historyNewTX.Transactions[key].TXMemo = "轉入方款不足"
-							newTX.TXErrMsg = val.TXFrom + ":" + val.TXErrMsg
-							queuedTx.Transactions[key].TXErrMsg = val.TXFrom + ":" + val.TXErrMsg
-							historyNewTX.Transactions[key].TXErrMsg = val.TXFrom + ":" + val.TXErrMsg
-						}
 					}
 				}
 			}
@@ -1656,14 +1380,12 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 				queuedTx.TXKEY = TXKEY
 				queuedTx.Transactions = append(queuedTx.Transactions, newTX)
 				queuedTx.TXIndexs = append(queuedTx.TXIndexs, TXIndex)
-				queuedTx.TXSIndexs = append(queuedTx.TXSIndexs, TXSIndex)
 				queuedTx.TXIDs = append(queuedTx.TXIDs, TXID)
 
 				historyNewTX.ObjectType = HistoryTXObjectType
 				historyNewTX.TXKEY = HTXKEY
 				historyNewTX.Transactions = append(historyNewTX.Transactions, newTX)
 				historyNewTX.TXIndexs = append(historyNewTX.TXIndexs, TXIndex)
-				historyNewTX.TXSIndexs = append(historyNewTX.TXSIndexs, TXSIndex)
 				historyNewTX.TXIDs = append(historyNewTX.TXIDs, TXID)
 				historyNewTX.TXStatus = append(historyNewTX.TXStatus, newTX.TXStatus)
 				historyNewTX.TXKinds = append(historyNewTX.TXKinds, TXKinds)
@@ -1687,168 +1409,157 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 	err = stub.PutState(TXID, TransactionAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
-	}
+	} 
 
 	return shim.Success(nil)
 
-} */
+}  
 
-/* func validateCorrectTransaction(
+func validateCorrectTransaction(
 	stub shim.ChaincodeStubInterface,
 	args []string) (FXTrade, bool, string) {
 
 	TimeNow := time.Now().Format(timelayout)
 	TimeNow2 := time.Now().Format(timelayout2)
 	var err error
-	var TXData1, TXData2, TXIndex, TXSIndex, TXID string
+	var TXData, TXIndex, TXID string
 	//TimeNow := time.Now().Format(timelayout)
-	transaction := Transaction{}
+	transaction := FXTrade{}
 	transaction.ObjectType = TransactionObjectType
 	transaction.TXStatus = "Cancelled"
 	transaction.TXMemo = "交易更正"
 	transaction.TXErrMsg = ""
 	transaction.TXHcode = ""
-	transaction.IsFrozen = false
-	transaction.CreateTime = TimeNow2
 	transaction.UpdateTime = TimeNow2
 	fmt.Println("TimeNow is %s", TimeNow)
 
-	err = checkArgArrayLength(args, 8)
+	err = checkArgArrayLength(args, 13)
 	if err != nil {
-		return transaction, false, "The args-length must be 8."
+		return transaction, false, "The args-length must be 13."
 	}
 	if len(args[0]) <= 0 {
 		return transaction, false, "TXType must be a non-empty string."
 	}
 	if len(args[1]) <= 0 {
-		return transaction, false, "TXFrom must be a non-empty string."
+		return transaction, false, "OwnCptyID must be a non-empty string."
 	}
 	if len(args[2]) <= 0 {
-		return transaction, false, "TXTo must be a non-empty string."
+		return transaction, false, "CptyID must be a non-empty string."
 	}
 	if len(args[3]) <= 0 {
-		return transaction, false, "SecurityID must be a non-empty string."
+		return transaction, false, "TradeDate must be a non-empty string."
 	}
 	if len(args[4]) <= 0 {
-		return transaction, false, "SecurityAmount must be a non-empty string."
+		return transaction, false, "MaturityDate must be a non-empty string."
 	}
 	if len(args[5]) <= 0 {
-		return transaction, false, "Payment must be a non-empty string."
+		return transaction, false, "Contract must be a non-empty string."
 	}
 	if len(args[6]) <= 0 {
-		return transaction, false, "isPutToQueue flag must be a non-empty string."
+		return transaction, false, "Curr1 must be a non-empty string."
 	}
 	if len(args[7]) <= 0 {
+		return transaction, false, "Amount1 must be a non-empty string."
+	}
+	if len(args[8]) <= 0 {
+		return transaction, false, "Curr2 must be a non-empty string."
+	}
+	if len(args[9]) <= 0 {
+		return transaction, false, "Amount2 must be a non-empty string."
+	}
+    if len(args[10]) <= 0 {
+		return transaction, false, "NetPrice must be a non-empty string."
+	}
+	if len(args[11]) <= 0 {
+		return transaction, false, "isPutToQueue flag must be a non-empty string."
+	}
+	if len(args[12]) <= 0 {
 		return transaction, false, "TXID flag must be a non-empty string."
 	}
 
-	TXID = strings.ToUpper(args[7])
+	TXID = strings.ToUpper(args[12])
 	sourceTX, err := getTransactionStructFromID(stub, TXID)
-	if sourceTX.TXStatus != "Pending" {
-		return transaction, false, "Failed to find Transaction Pending TXStatus."
+	if (sourceTX.TXStatus != "Pending") && (sourceTX.TXStatus != "Matched") {
+		return transaction, false, "Failed to find Transaction Pending/Matched TXStatus."
 	}
-	if sourceTX.TXStatus == "Cancelled" {
-		return transaction, false, "TXStatus of transaction was Cancelled. TXHcode:" + sourceTX.TXHcode
-	}
+	//if sourceTX.TXStatus == "Cancelled" {
+	//	return transaction, false, "TXStatus of transaction was Cancelled. TXHcode:" + sourceTX.TXHcode
+	//}
 
 	TXType := args[0]
 	if (TXType != "B") && (TXType != "S") {
 		return transaction, false, "TXType must be a B or S."
 	}
 	transaction.TXType = TXType
-	TXFrom := strings.ToUpper(args[1])
-	BankFrom := "BK" + SubString(TXFrom, 0, 3)
-	transaction.TXFrom = TXFrom
-	transaction.BankFrom = BankFrom
-	TXHcode := BankFrom + TXType + TXFrom + TimeNow
+	OwnCptyID := strings.ToUpper(args[1])
+	CptyID := strings.ToUpper(args[2])
+	TXHcode := OwnCptyID + TXType + TimeNow
 	transaction.TXID = TXHcode
-	TXTo := strings.ToUpper(args[2])
-	BankTo := "BK" + SubString(TXTo, 0, 3)
-	transaction.TXTo = TXTo
-	transaction.BankTo = BankTo
-	if TXFrom == TXTo {
-		return transaction, false, "TXFrom equal to TXTo."
-	}
-	BankFromID := "BANK" + SubString(TXFrom, 0, 3)
-	if verifyIdentity(stub, BankFromID) != "" {
-		return transaction, false, "BankFromID does not exits in the BankList."
-	}
-	SecurityID := strings.ToUpper(args[3])
-	_, err = getSecurityStructFromID(stub, SecurityID)
-	if err != nil {
-		return transaction, false, "SecurityID does not exits."
-	}
-	transaction.SecurityID = SecurityID
-	SecurityAmount, err := strconv.ParseInt(args[4], 10, 64)
-	if err != nil {
-		return transaction, false, "SecurityAmount must be a numeric string."
-	} else if SecurityAmount < 0 {
-		return transaction, false, "SecurityAmount must be a positive value."
-	}
-	transaction.SecurityAmount = SecurityAmount
-	Payment, err := strconv.ParseInt(args[5], 10, 64)
-	if err != nil {
-		return transaction, false, "Payment must be a numeric string."
-	} else if Payment < 0 {
-		return transaction, false, "Payment must be a positive value."
-	}
-	transaction.Payment = Payment
-	senderPendingBalance, receiverPendingBalance, errMsg := updateAccountPendingBalance(stub, SecurityID, Payment, TXFrom, TXTo)
-	if errMsg != "" {
-		return transaction, true, errMsg
-	}
-	if senderPendingBalance <= 0 {
-		return transaction, true, "senderPendingBalance less equle to zero."
-	}
-	if receiverPendingBalance <= 0 {
-		return transaction, true, "receiverPendingBalance less equle to zero."
+	
+	if OwnCptyID == CptyID {
+		return transaction, false, "OwnCptyID equal to CptyID."
 	}
 
+	//if verifyIdentity(stub, OwnCptyID) != "" {
+	//	return transaction, false, "OwnCptyID does not exits in the BankList."
+	//}
+    //if verifyIdentity(stub, CptyID) != "" {
+	//	return transaction, false, "CptyID does not exits in the CptyList."
+	//}
+	
+	transaction.OwnCptyID = OwnCptyID
+	transaction.CptyID = CptyID
+	TradeDate := args[3]
+	transaction.TradeDate = TradeDate
+	
+	MaturityDate := args[4]
+	transaction.MaturityDate = MaturityDate
+
+	Contract := strings.ToUpper(args[5])
+	transaction.Contract = Contract
+
+	Curr1 := strings.ToUpper(args[6])
+	transaction.Curr1 = Curr1
+
+	Amount1, err := strconv.ParseFloat(args[7], 64)
+	if err != nil {
+		return transaction, false, "Amount1 must be a numeric string."
+	} else if Amount1 < 0 {
+		return transaction, false, "Amount1 must be a positive value"
+	}
+	transaction.Amount1 = Amount1
+
+	Curr2 := strings.ToUpper(args[8])
+	transaction.Curr2 = Curr2
+
+	Amount2, err := strconv.ParseFloat(args[9], 64)
+	if err != nil {
+		return transaction, false, "Amount2 must be a numeric string."
+	} else if Amount2 < 0 {
+		return transaction, false, "Amount2 must be a positive value"
+	}
+	transaction.Amount2 = Amount2
+
+	NetPrice, err := strconv.ParseFloat(args[10], 64)
+	if err != nil {
+		return transaction, false, "NetPrice must be a numeric string."
+	} else if NetPrice < 0 {
+		return transaction, false, "NetPrice must be a positive value"
+	}
+	transaction.NetPrice = NetPrice
+
+	//TXData = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + Amount1 
 	if TXType == "S" {
-		TXData1 = BankFrom + TXFrom + BankTo + TXTo + SecurityID + strconv.FormatInt(SecurityAmount, 10) + strconv.FormatInt(Payment, 10)
-		TXIndex = getSHA256(TXData1)
-		TXData2 = BankFrom + TXFrom + BankTo + TXTo + SecurityID
-		TXSIndex = getSHA256(TXData2)
-		transaction.TXFromPendingBalance = senderPendingBalance
+		TXData = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'f', 4, 64)
+		TXIndex = getSHA256(TXData)
 	}
-
+	fmt.Println("6.validateTransaction= " + TimeNow + "\n")
 	if TXType == "B" {
-		TXData1 = BankTo + TXTo + BankFrom + TXFrom + SecurityID + strconv.FormatInt(SecurityAmount, 10) + strconv.FormatInt(Payment, 10)
-		TXIndex = getSHA256(TXData1)
-		TXData2 = BankTo + TXTo + BankFrom + TXFrom + SecurityID
-		TXSIndex = getSHA256(TXData2)
-		transaction.TXFromPendingBalance = receiverPendingBalance
+		TXData = CptyID + OwnCptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'f', 4, 64)
+		TXIndex = getSHA256(TXData)
 	}
 
 	transaction.TXIndex = TXIndex
-	transaction.TXSIndex = TXSIndex
-	balance, position, securityamount, pendingbalance, errMsg := checkAccountBalance(stub, SecurityID, Payment, SecurityAmount, TXFrom, TXType, senderPendingBalance)
-	transaction.TXFromBalance = balance
-	transaction.TXFromPosition = position
-	transaction.TXFromAmount = securityamount
-	if errMsg != "" && TXType == "S" {
-		transaction.TXMemo = "轉出方券不足"
-		//transaction.TXErrMsg = TXFrom + ":Payment > Balance"
-		transaction.TXErrMsg = errMsg
-		fmt.Printf("Payment: %s\n", Payment)
-		fmt.Printf("balance: %s\n", balance)
-		fmt.Printf("position: %s\n", position)
-		fmt.Printf("securityamount: %s\n", securityamount)
-		fmt.Printf("pendingbalance: %s\n", pendingbalance)
-		return transaction, true, errMsg
-	}
-	if errMsg != "" && TXType == "B" {
-		transaction.TXMemo = "轉入方款不足"
-		//transaction.TXErrMsg = TXFrom + ":Payment > Balance"
-		transaction.TXErrMsg = errMsg
-		fmt.Printf("Payment: %s\n", Payment)
-		fmt.Printf("balance: %s\n", balance)
-		fmt.Printf("position: %s\n", position)
-		fmt.Printf("securityamount: %s\n", securityamount)
-		fmt.Printf("pendingbalance: %s\n", pendingbalance)
-		return transaction, true, errMsg
-	}
-
 	transaction.TXHcode = TXID
 	transaction.TXStatus = "Pending"
 
@@ -1862,7 +1573,7 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 
 	return transaction, true, ""
 
-} */
+} 
 
 /* func updateEndDayTransactionStatus(stub shim.ChaincodeStubInterface, TXID string) (string, error) {
 	var MatchedTXID string
@@ -2153,7 +1864,7 @@ func (s *SmartContract) queryHistoryTXKEYTransactions(APIstub shim.ChaincodeStub
 	return shim.Success(HistoryNewTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "0002S20180903060425"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "0001B20180905161403"]}' -C myc
 //peer chaincode query -n mycc -c '{"Args":["getHistoryForTransaction", "0001B20180903060152"]}' -C myc
 
 //用TXKEY去查詢TransactionHistory，回傳多筆
@@ -2469,6 +2180,62 @@ func (s *SmartContract) queryAllTransactions(APIstub shim.ChaincodeStubInterface
 	return shim.Success(buffer.Bytes())
 }
 
+//peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"Transaction\",\"TXHcode\":\"0001B20180906123212\"}}"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"Transaction\",\"TradeDate\":\"2018/01/01\"}}"]}' -C myc
+func (s *SmartContract) queryTables(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) < 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	queryString := args[0]
+
+	queryResults, err := getQueryResultForQueryString(stub, queryString)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(queryResults)
+}
+
+func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string)([] byte, error) {
+	
+	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
+    resultsIterator, err := stub.GetQueryResult(queryString)
+    defer resultsIterator.Close()
+    if err != nil {
+		fmt.Printf("- getQueryResultForQueryString resultsIterator error")
+        return nil, err
+    }
+    // buffer is a JSON array containing QueryRecords
+    var buffer bytes.Buffer
+	buffer.WriteString("[")
+	fmt.Printf("- getQueryResultForQueryString start buffer")
+    bArrayMemberAlreadyWritten := false
+    for resultsIterator.HasNext() {
+        queryResponse,
+        err := resultsIterator.Next()
+        if err != nil {
+            return nil, err
+        }
+        // Add a comma before array members, suppress it for the first array member
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+        }
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+        buffer.WriteString(", \"Record\":")
+        // Record is a JSON object, so we write as-is
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+    }
+    buffer.WriteString("]")
+    fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
+    return buffer.Bytes(), nil
+}
+
 //peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180903","20180903"]}' -C myc
 func (s *SmartContract) queryAllQueuedTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -2684,7 +2451,7 @@ func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubI
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"Amount1\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].Amount1,'f', 8, 64))
+			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].Amount1,'f', 4, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"Curr2\":")
 			buffer.WriteString("\"")
@@ -2692,11 +2459,11 @@ func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubI
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"Amount2\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].Amount2,'f', 8, 64))
+			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].Amount2,'f', 4, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"NetPrice\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].NetPrice,'f', 8, 64))
+			buffer.WriteString(strconv.FormatFloat(QueuedTX.Transactions[key].NetPrice,'f', 4, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TXStatus\":")
 			buffer.WriteString("\"")
@@ -2814,7 +2581,7 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"Amount1\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].Amount1,'f', 8, 64))
+			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].Amount1,'f', 4, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"Curr2\":")
 			buffer.WriteString("\"")
@@ -2822,11 +2589,11 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"Amount2\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].Amount2,'f', 8, 64))
+			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].Amount2,'f', 4, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"NetPrice\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].NetPrice,'f', 8, 64))
+			buffer.WriteString(strconv.FormatFloat(HistoryTX.Transactions[key].NetPrice,'f', 4, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TXStatus\":")
 			buffer.WriteString("\"")
@@ -2876,6 +2643,7 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 
 	return shim.Success(buffer.Bytes())
 }
+
 
 func checkArgArrayLength(
 	args []string,
