@@ -1361,10 +1361,26 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 						queuedTx.Transactions[key].TXMemo = ""
 						historyNewTX.Transactions[key].TXMemo = ""
 						newTX.TXMemo = ""
-						
-						doflg = true
-						break
+					
+					} else {
+						queuedTx.Transactions[key].TXStatus = "Finished"
+						historyNewTX.Transactions[key].TXStatus = "Finished"
+						historyNewTX.TXStatus[key] = "Finished"
+						newTX.TXStatus = "Finished"
+						queuedTx.Transactions[key].TXMemo = ""
+						historyNewTX.Transactions[key].TXMemo = ""
+						newTX.TXMemo = ""
+						err := updateTransactionStatus(stub, val.TXID, "Finished", TXID)
+						if err != nil {
+							//return shim.Error(err.Error())
+							newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Finished."
+							//newTX.TXStatus = "Cancelled"
+							break
+						}
 					}
+					doflg = true
+					break
+					
 				}
 			}
 		}
