@@ -168,6 +168,9 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	//} else if function == "queryAllFXTrade" {
 	//	return s.queryAllFXTrade(APIstub, args)	
 
+	//} else if function == "fetchEURUSDviaOraclize" {
+	//	return s.fetchEURUSDviaOraclize(APIstub)
+
 	// Transaction Functions
     } else if function == "FXTradeTransfer" {
 		return s.FXTradeTransfer(APIstub, args)

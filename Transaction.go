@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
+	//oraclizeapi "github.com/oraclize/fabric-api"
 )
 
 const TransactionObjectType string = "Transaction"
@@ -282,13 +283,6 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 /* FXTrade交易比對
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
-
-peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "B","004000000001" , "004000000002" , "A07103" , "102000","100000","true"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "S","004000000002" , "004000000001" , "A07103" , "102000","100000","true"]}' -C myc
-
-peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "S","002000000001" , "002000000002" , "A07103" , "102000","100000","true"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["securityTransfer", "B","002000000002" , "002000000001" , "A07103" , "102000","100000","true"]}' -C myc
-
 */
 
 func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []string) peer.Response {
@@ -2659,3 +2653,16 @@ func checkArgArrayLength(
 	}
 	return nil
 }
+
+//peer chaincode query -n mycc -c '{"Args":["fetchEURUSDviaOraclize"]}' -C myc
+/* func (s *SmartContract) fetchEURUSDviaOraclize(APIstub shim.ChaincodeStubInterface) peer.Response {
+	fmt.Println("============= START : Calling the oraclize chaincode =============")
+	var datasource = "URL"                                                                  // Setting the Oraclize datasource
+	var query = "json(https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD).USD" // Setting the query
+	result, proof := oraclizeapi.OraclizeQuery_sync(APIstub, datasource, query, oraclizeapi.TLSNOTARY)
+	fmt.Printf("proof: %s", proof)
+	fmt.Printf("\nresult: %s\n", result)
+	fmt.Println("Do something with the result...")
+	fmt.Println("============= END : Calling the oraclize chaincode =============")
+	return shim.Success(result)
+} */
