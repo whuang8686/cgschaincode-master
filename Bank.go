@@ -168,14 +168,16 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	//} else if function == "queryAllFXTrade" {
 	//	return s.queryAllFXTrade(APIstub, args)	
 
-	//} else if function == "fetchEURUSDviaOraclize" {
-	//	return s.fetchEURUSDviaOraclize(APIstub)
+	} else if function == "fetchEURUSDviaOraclize" {
+		return s.fetchEURUSDviaOraclize(APIstub)
 
 	// Transaction Functions
     } else if function == "FXTradeTransfer" {
 		return s.FXTradeTransfer(APIstub, args)
 	} else if function == "CorrectFXTradeTransfer" {
 		return s.CorrectFXTradeTransfer(APIstub, args)
+	} else if function == "FXTradeMTM" {
+		return s.FXTradeMTM(APIstub, args)	
     } else if function == "queryTables" { 
 		return s.queryTables(APIstub, args)
 	} else if function == "queryTXIDTransactions" {

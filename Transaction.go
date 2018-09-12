@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
-	//oraclizeapi "github.com/oraclize/fabric-api"
+	oraclizeapi "github.com/oraclize/fabric-api"
 )
 
 const TransactionObjectType string = "Transaction"
@@ -46,6 +46,48 @@ type TransactionHistory struct {
 	TXKinds      []string      `json:"TXKinds"`        // 交易種類資料
 	Transactions []FXTrade     `json:"Transactions"`   // 當日交易資料
 }
+
+type TransactionMTM struct {
+	ObjectType   string        `json:"docType"`        // default set to "MTM"
+	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(HYYYYMMDD)
+	TXID         string        `json:"TXID"`           // FXTrade ＝ OwnCptyID + TXType + TimeNow
+	OwnCptyID    string        `json:"OwnCptyID"`
+	TXKinds      []string      `json:"TXKinds"`        // Spot/FW
+    MTM          float64       `json:"MTM"`       	
+}
+
+//peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "2018/12/01"]}' -C myc 
+func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []string) peer.Response {
+	
+	//先前除當日資料
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	// Delete the key from the state in ledger
+	errMsg := stub.DelState(args[0])
+	if errMsg != nil {
+		return shim.Error("Failed to DelState")
+	}
+
+	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/12/01"}}}
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"}}}", args[0])
+	//queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
+	fmt.Println("queryString= " + queryString + "\n") 
+	resultsIterator, err := stub.GetQueryResult(queryString)
+    defer resultsIterator.Close()
+    if err != nil {
+        return shim.Error("Failed to GetQueryResult")
+	}
+	for resultsIterator.HasNext() {
+        queryResponse,err := resultsIterator.Next()
+        if err != nil {
+			return shim.Error("Failed to Next")
+		}
+		fmt.Println("queryResponse.Key= " + queryResponse.Key + "\n") 
+	}	
+	return shim.Success(nil)
+}	
 
 /*
 peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK004B00400000000120180415070724","0","BANKCBC"]}' -C myc -v 9.0
@@ -281,8 +323,8 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
 */
 
 func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []string) peer.Response {
@@ -2191,7 +2233,7 @@ func (s *SmartContract) queryAllTransactions(APIstub shim.ChaincodeStubInterface
 }
 
 //peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"Transaction\",\"TXHcode\":\"0001B20180906123212\"}}"]}' -C myc
-//peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"Transaction\",\"TradeDate\":\"2018/01/01\"}}"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"2018/12/31\"}}"]}' -C myc
 func (s *SmartContract) queryTables(stub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) < 1 {
@@ -2671,7 +2713,7 @@ func checkArgArrayLength(
 }
 
 //peer chaincode query -n mycc -c '{"Args":["fetchEURUSDviaOraclize"]}' -C myc
-/* func (s *SmartContract) fetchEURUSDviaOraclize(APIstub shim.ChaincodeStubInterface) peer.Response {
+func (s *SmartContract) fetchEURUSDviaOraclize(APIstub shim.ChaincodeStubInterface) peer.Response {
 	fmt.Println("============= START : Calling the oraclize chaincode =============")
 	var datasource = "URL"                                                                  // Setting the Oraclize datasource
 	var query = "json(https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD).USD" // Setting the query
@@ -2681,4 +2723,4 @@ func checkArgArrayLength(
 	fmt.Println("Do something with the result...")
 	fmt.Println("============= END : Calling the oraclize chaincode =============")
 	return shim.Success(result)
-} */
+} 
