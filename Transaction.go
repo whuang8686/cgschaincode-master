@@ -71,20 +71,31 @@ func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []strin
 	}
 
 	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/12/01"}}}
+    //queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
 	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"}}}", args[0])
-	//queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
+
 	fmt.Println("queryString= " + queryString + "\n") 
 	resultsIterator, err := stub.GetQueryResult(queryString)
     defer resultsIterator.Close()
     if err != nil {
         return shim.Error("Failed to GetQueryResult")
 	}
+	transactionArr := []FXTrade{}
+	var i=0
 	for resultsIterator.HasNext() {
+
         queryResponse,err := resultsIterator.Next()
         if err != nil {
 			return shim.Error("Failed to Next")
 		}
 		fmt.Println("queryResponse.Key= " + queryResponse.Key + "\n") 
+	
+		jsonByteObj := queryResponse.Value
+		transaction := FXTrade{}
+		json.Unmarshal(jsonByteObj, &transaction)
+		transactionArr = append(transactionArr, transaction)
+		fmt.Println("queryResponse.Value.NetPrice= " + strconv.FormatFloat(transactionArr[i].NetPrice, 'f', 4, 64) + "\n") 
+		i += 1 
 	}	
 	return shim.Success(nil)
 }	
@@ -324,7 +335,7 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 
 /* FXTrade交易比對
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","true"]}' -C myc 
 */
 
 func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []string) peer.Response {
