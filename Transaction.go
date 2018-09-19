@@ -14,12 +14,13 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
-	oraclizeapi "github.com/oraclize/fabric-api"
+	//oraclizeapi "github.com/oraclize/fabric-api"
 )
 
 const TransactionObjectType string = "Transaction"
 const QueuedTXObjectType string = "QueuedTX"
 const HistoryTXObjectType string = "HistoryTX"
+const TransactionMTMObjectType string = "MTM"
 const timelayout string = "20060102150405"
 const timelayout2 string = "2006/01/02 15:04:05"
 
@@ -50,15 +51,19 @@ type TransactionHistory struct {
 type TransactionMTM struct {
 	ObjectType   string        `json:"docType"`        // default set to "MTM"
 	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(HYYYYMMDD)
-	TXID         string        `json:"TXID"`           // FXTrade ＝ OwnCptyID + TXType + TimeNow
-	OwnCptyID    string        `json:"OwnCptyID"`
-	TXKinds      []string      `json:"TXKinds"`        // Spot/FW
+	TXID         string        `json:"TXID"`           // 交易序號資料 ＝ OwnCptyID + TimeNow
+	FXTXID       string        `json:"FXTXID"`         // FXTrade交易序號資料 ＝ OwnCptyID + TXType + TimeNow
+	TXKinds      string        `json:"TXKinds"`        // Spot/FW
+	NetPrice     float64       `json:"NetPrice"`       // 成交價
+	ClosePrice   float64       `json:"ClosePrice"`     // 收盤價
     MTM          float64       `json:"MTM"`       	
 }
 
 //peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "2018/12/01"]}' -C myc 
 func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []string) peer.Response {
 	
+	TimeNow := time.Now().Format(timelayout)
+
 	//先前除當日資料
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
@@ -82,7 +87,10 @@ func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []strin
 	}
 	transactionArr := []FXTrade{}
 	var i=0
+
+
 	for resultsIterator.HasNext() {
+
 
         queryResponse,err := resultsIterator.Next()
         if err != nil {
@@ -94,7 +102,26 @@ func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []strin
 		transaction := FXTrade{}
 		json.Unmarshal(jsonByteObj, &transaction)
 		transactionArr = append(transactionArr, transaction)
-		fmt.Println("queryResponse.Value.NetPrice= " + strconv.FormatFloat(transactionArr[i].NetPrice, 'f', 4, 64) + "\n") 
+		//fmt.Println("queryResponse.Value.NetPrice= " + strconv.FormatFloat(transactionArr[i].NetPrice, 'f', 4, 64) + "\n") 
+		//計算Spot MTM
+		//if transactionArr[i].TXKinds == "SPOT" {
+		   var TXKEY,TXID string
+		   var NetPrice, ClosePrice,MTM float64
+
+		   TXKEY = "MTM" + SubString(TimeNow, 0, 8)
+		   TXID = transactionArr[i].OwnCptyID + TimeNow
+		   NetPrice = transactionArr[i].NetPrice
+		   ClosePrice = 30.123     //get from API
+		   MTM = ClosePrice - NetPrice
+		   
+		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: "SPOT",NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
+		   TransactionMTMsBytes, _ := json.Marshal(TransactionMTM)
+		   err1 := stub.PutState(TransactionMTM.TXKEY, TransactionMTMsBytes)
+		   if err1 != nil {
+			   fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
+			   return shim.Error(err1.Error())
+		   }
+		//}
 		i += 1 
 	}	
 	return shim.Success(nil)
@@ -334,8 +361,8 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
 */
 
 func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []string) peer.Response {
@@ -2299,7 +2326,7 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
     return buffer.Bytes(), nil
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180903","20180903"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryAllQueuedTransactions", "20180918","20180919"]}' -C myc
 func (s *SmartContract) queryAllQueuedTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -2348,7 +2375,7 @@ func (s *SmartContract) queryAllQueuedTransactions(APIstub shim.ChaincodeStubInt
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllHistoryTransactions", "20180903","20180904"]}' -C myc 
+//peer chaincode query -n mycc -c '{"Args":["queryAllHistoryTransactions", "H20180918","H20180919"]}' -C myc 
 func (s *SmartContract) queryAllHistoryTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -2726,12 +2753,16 @@ func checkArgArrayLength(
 //peer chaincode query -n mycc -c '{"Args":["fetchEURUSDviaOraclize"]}' -C myc
 func (s *SmartContract) fetchEURUSDviaOraclize(APIstub shim.ChaincodeStubInterface) peer.Response {
 	fmt.Println("============= START : Calling the oraclize chaincode =============")
-	var datasource = "URL"                                                                  // Setting the Oraclize datasource
-	var query = "json(https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD).USD" // Setting the query
-	result, proof := oraclizeapi.OraclizeQuery_sync(APIstub, datasource, query, oraclizeapi.TLSNOTARY)
-	fmt.Printf("proof: %s", proof)
-	fmt.Printf("\nresult: %s\n", result)
-	fmt.Println("Do something with the result...")
+	//var datasource = "URL"                                                                  // Setting the Oraclize datasource
+	//var query = "json(https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD).USD" // Setting the query
+	//var query ="await request.get('https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD')"
+	//fmt.Printf("proof: %s", query)
+	//result, proof := oraclizeapi.OraclizeQuery_sync(APIstub, datasource, query, oraclizeapi.TLSNOTARY)
+	//fmt.Printf("proof: %s", proof)
+	//fmt.Printf("\nresult: %s\n", result)
+	//fmt.Println("Do something with the result...")
+	//var request = require('request')
+    
 	fmt.Println("============= END : Calling the oraclize chaincode =============")
-	return shim.Success(result)
+	return shim.Success(nil)
 } 
