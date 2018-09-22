@@ -95,7 +95,7 @@ type FXTrade struct {
 	ObjectType           string          `json:"docType"`             //docType is used to distinguish the various types of objects in state database
 	TXID                 string          `json:"TXID"`                //OwnCptyID + TXType + TimeNow
 	TXType               string          `json:"TXType"`              //Transaction TXType BUY or SELL
-	TXKinds              string          `json:"TXKinds"`              //交易種類SPOT or FW
+	TXKinds              string          `json:"TXKinds"`             //交易種類SPOT or FW
 	OwnCptyID            string          `json:"OwnCptyID"`
 	CptyID               string          `json:"CptyID"`              //交易對手
 	TradeDate            string          `json:"TradeDate"`           //交易日

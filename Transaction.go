@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
-	//oraclizeapi "github.com/oraclize/fabric-api"
+	oraclizeapi "github.com/oraclize/fabric-api"
 )
 
 const TransactionObjectType string = "Transaction"
@@ -60,7 +60,7 @@ type TransactionMTM struct {
 }
 
 //peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "2018/12/01"]}' -C myc 
-func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []string) peer.Response {
+func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 	
 	TimeNow := time.Now().Format(timelayout)
 
@@ -70,7 +70,7 @@ func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []strin
 	}
 
 	// Delete the key from the state in ledger
-	errMsg := stub.DelState(args[0])
+	errMsg := APIstub.DelState(args[0])
 	if errMsg != nil {
 		return shim.Error("Failed to DelState")
 	}
@@ -80,7 +80,7 @@ func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []strin
 	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"}}}", args[0])
 
 	fmt.Println("queryString= " + queryString + "\n") 
-	resultsIterator, err := stub.GetQueryResult(queryString)
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
     defer resultsIterator.Close()
     if err != nil {
         return shim.Error("Failed to GetQueryResult")
@@ -116,7 +116,7 @@ func (s *SmartContract) FXTradeMTM(stub shim.ChaincodeStubInterface,args []strin
 		   
 		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: "SPOT",NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
 		   TransactionMTMsBytes, _ := json.Marshal(TransactionMTM)
-		   err1 := stub.PutState(TransactionMTM.TXKEY, TransactionMTMsBytes)
+		   err1 := APIstub.PutState(TransactionMTM.TXKEY, TransactionMTMsBytes)
 		   if err1 != nil {
 			   fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
 			   return shim.Error(err1.Error())
@@ -134,7 +134,7 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 */
 
 /* func (s *SmartContract) submitApproveTransaction(
-	stub shim.ChaincodeStubInterface,
+	APIstub shim.ChaincodeStubInterface,
 	args []string) peer.Response {
 
 	TimeNow := time.Now().Format(timelayout)
@@ -160,7 +160,7 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 	}
 
 	ApproveFlag := approved0
-	ValueAsBytes, err := stub.GetState("approveflag")
+	ValueAsBytes, err := APIstub.GetState("approveflag")
 	if err == nil {
 		ApproveFlag = string(ValueAsBytes)
 	}
@@ -313,7 +313,7 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 //peer chaincode invoke -n mycc -c '{"Args":["submitEndDayTransaction", "BANK004S00400000000120180414121032" , "BANKCBC" ]}' -C myc -v 1.0
 
 /* func (s *SmartContract) submitEndDayTransaction(
-	stub shim.ChaincodeStubInterface,
+	APIstub shim.ChaincodeStubInterface,
 	args []string) peer.Response {
 	//var MatchedTXID string
 	//MatchedTXID = ""
@@ -361,15 +361,15 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","true"]}' -C myc 
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","FW","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","FW","true"]}' -C myc 
 */
 
-func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []string) peer.Response {
+func (s *SmartContract) FXTradeTransfer(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 
 	TimeNow := time.Now().Format(timelayout)
 
-	newTX, isPutInQueue, errMsg := validateTransaction(stub, args)
+	newTX, isPutInQueue, errMsg := validateTransaction(APIstub, args)
 
 	if errMsg != "" {
 		//return shim.Error(err.Error())
@@ -402,7 +402,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 	}
 
 	//ApproveFlag := approved0
-	//ValueAsBytes, err := stub.GetState("approveflag")
+	//ValueAsBytes, err := APIstub.GetState("approveflag")
 	//if err == nil {
 	//	ApproveFlag = string(ValueAsBytes)
 	//}
@@ -411,7 +411,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 
 	if isPutInQueue == true {
 		newTX.isPutToQueue = true
-		queueAsBytes, err := stub.GetState(TXKEY)
+		queueAsBytes, err := APIstub.GetState(TXKEY)
 		fmt.Println("isPutInQueue == true=" + TXKEY + "\n")
 		if err != nil {
 			//return shim.Error(err.Error())
@@ -423,7 +423,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 		queuedTx := QueuedTransaction{}
 		json.Unmarshal(queueAsBytes, &queuedTx)
 
-		historyAsBytes, err := stub.GetState(HTXKEY)
+		historyAsBytes, err := APIstub.GetState(HTXKEY)
 		if err != nil {
 			fmt.Println("2.historyAsBytes,errMsg= " + err.Error() + "\n")
 			newTX.TXErrMsg = HTXKEY + ":HistoryID does not exits."
@@ -474,7 +474,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 						newTX.MatchedTXID = val.TXID
 						queuedTx.Transactions[key].MatchedTXID = TXID
 						historyNewTX.Transactions[key].MatchedTXID = TXID
-						err = updateTransactionStatus(stub, val.TXID, "Matched", TXID)
+						err = updateTransactionStatus(APIstub, val.TXID, "Matched", TXID)
 						if err != nil {
 							//return shim.Error(err.Error())
 							fmt.Println("updateTransactionStatus,err=\n")
@@ -516,14 +516,14 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 		}		
 		QueuedAsBytes, err := json.Marshal(queuedTx)
 		fmt.Println("PutState.QueuedAsBytes=ok\n")
-		err = stub.PutState(TXKEY, QueuedAsBytes)
+		err = APIstub.PutState(TXKEY, QueuedAsBytes)
 		if err != nil {
 			fmt.Println("PutState.QueuedAsBytes= " + err.Error() + "\n")
 			return shim.Error(err.Error())
 		}
 		historyAsBytes, err = json.Marshal(historyNewTX)
 		fmt.Println("PutState.historyAsBytes=ok\n")
-		err = stub.PutState(HTXKEY, historyAsBytes)
+		err = APIstub.PutState(HTXKEY, historyAsBytes)
 		if err != nil {
 			fmt.Println("PutState.historyAsBytes= " + err.Error() + "\n")
 			return shim.Error(err.Error())
@@ -534,7 +534,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.PutState(TXID, TransactionAsBytes)
+	err = APIstub.PutState(TXID, TransactionAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -543,7 +543,7 @@ func (s *SmartContract) FXTradeTransfer(stub shim.ChaincodeStubInterface,args []
 }
 
 
-func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrade, bool, string) {
+func validateTransaction(APIstub shim.ChaincodeStubInterface,args []string) (FXTrade, bool, string) {
 	TimeNow := time.Now().Format(timelayout)
 	TimeNow2 := time.Now().Format(timelayout2)
 	var err error
@@ -558,9 +558,9 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 	transaction.CreateTime = TimeNow2
 	transaction.UpdateTime = TimeNow2
 
-	err = checkArgArrayLength(args, 12)
+	err = checkArgArrayLength(args, 13)
 	if err != nil {
-		return transaction, false, "The args-length must be 8."
+		return transaction, false, "The args-length must be 13."
 	}
 	if len(args[0]) <= 0 {
 		return transaction, false, "TXType must be a non-empty string."
@@ -596,10 +596,13 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 		return transaction, false, "NetPrice must be a non-empty string."
 	}
 	if len(args[11]) <= 0 {
+		return transaction, false, "TXKinds must be a non-empty string."
+	}
+	if len(args[12]) <= 0 {
 		return transaction, false, "isPutToQueue flag must be a non-empty string."
 	}
 
-	isPutToQueue, err := strconv.ParseBool(strings.ToLower(args[11]))
+	isPutToQueue, err := strconv.ParseBool(strings.ToLower(args[12]))
 	if err != nil {
 		return transaction, false, "isPutToQueue must be a boolean string."
 	}
@@ -664,7 +667,7 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 		return transaction, false, "NetPrice must be a positive value"
 	}
 	transaction.NetPrice = NetPrice
-
+    transaction.TXKinds = strings.ToUpper(args[11])
 	//TXData = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + Amount1 
 	if TXType == "S" {
 		TXData = OwnCptyID + CptyID + TradeDate + MaturityDate + Contract + Curr1 + strconv.FormatFloat(Amount1, 'f', 4, 64)
@@ -681,11 +684,11 @@ func validateTransaction(stub shim.ChaincodeStubInterface,args []string) (FXTrad
 
 }
 
-func getTransactionStructFromID(stub shim.ChaincodeStubInterface,TXID string) (*FXTrade, error) {
+func getTransactionStructFromID(APIstub shim.ChaincodeStubInterface,TXID string) (*FXTrade, error) {
 
 	var errMsg string
 	newTX := &FXTrade{}
-	TXAsBytes, err := stub.GetState(TXID)
+	TXAsBytes, err := APIstub.GetState(TXID)
 	if err != nil {
 		return newTX, err
 	} else if TXAsBytes == nil {
@@ -700,12 +703,12 @@ func getTransactionStructFromID(stub shim.ChaincodeStubInterface,TXID string) (*
 }
 
 func getQueueStructFromID(
-	stub shim.ChaincodeStubInterface,
+	APIstub shim.ChaincodeStubInterface,
 	TXKEY string) (*QueuedTransaction, error) {
 
 	var errMsg string
 	queue := &QueuedTransaction{}
-	queueAsBytes, err := stub.GetState(TXKEY)
+	queueAsBytes, err := APIstub.GetState(TXKEY)
 	if err != nil {
 		return nil, err
 	} else if queueAsBytes == nil {
@@ -720,12 +723,12 @@ func getQueueStructFromID(
 }
 
 func getHistoryTransactionStructFromID(
-	stub shim.ChaincodeStubInterface,
+	APIstub shim.ChaincodeStubInterface,
 	TXKEY string) (*TransactionHistory, error) {
 
 	var errMsg string
 	newTX := &TransactionHistory{}
-	TXAsBytes, err := stub.GetState(TXKEY)
+	TXAsBytes, err := APIstub.GetState(TXKEY)
 	if err != nil {
 		return newTX, err
 	} else if TXAsBytes == nil {
@@ -740,7 +743,7 @@ func getHistoryTransactionStructFromID(
 }
 
 func getQueueArrayFromQuery(
-	stub shim.ChaincodeStubInterface) ([]QueuedTransaction, int, error) {
+	APIstub shim.ChaincodeStubInterface) ([]QueuedTransaction, int, error) {
 	TimeNow := time.Now().Format(timelayout)
 
 	//startKey := "20180000" //20180326
@@ -751,7 +754,7 @@ func getQueueArrayFromQuery(
 	sumLen = 0
 	TXKEY := SubString(TimeNow, 0, 8)
 
-	resultsIterator, err := stub.GetStateByRange(TXKEY, TXKEY)
+	resultsIterator, err := APIstub.GetStateByRange(TXKEY, TXKEY)
 	if err != nil {
 		return nil, sumLen, err
 	}
@@ -797,10 +800,10 @@ func getMD5Str(myData string) string {
 	return encodeStr
 }
 
-func updateTransactionStatus(stub shim.ChaincodeStubInterface, TXID string, TXStatus string, MatchedTXID string) error {
+func updateTransactionStatus(APIstub shim.ChaincodeStubInterface, TXID string, TXStatus string, MatchedTXID string) error {
 	fmt.Printf("1 updateTransactionStatus TXID = %s, TXStatus = %s, MatchedTXID = %s\n", TXID, TXStatus, MatchedTXID)
 	TimeNow2 := time.Now().Format(timelayout2)
-	transaction, err := getTransactionStructFromID(stub, TXID)
+	transaction, err := getTransactionStructFromID(APIstub, TXID)
 	transaction.TXStatus = TXStatus
 	var TXMemo, TXErrMsg string
 	TXMemo = ""
@@ -852,17 +855,17 @@ func updateTransactionStatus(stub shim.ChaincodeStubInterface, TXID string, TXSt
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(TXID, transactionAsBytes)
+	err = APIstub.PutState(TXID, transactionAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateQueuedTransactionStatus(stub shim.ChaincodeStubInterface, TXKEY string, TXID string, TXStatus string) error {
+func updateQueuedTransactionStatus(APIstub shim.ChaincodeStubInterface, TXKEY string, TXID string, TXStatus string) error {
 
 	TimeNow2 := time.Now().Format(timelayout2)
-	queuedTX, err := getQueueStructFromID(stub, TXKEY)
+	queuedTX, err := getQueueStructFromID(APIstub, TXKEY)
 	if err != nil {
 		return err
 	}
@@ -885,17 +888,17 @@ func updateQueuedTransactionStatus(stub shim.ChaincodeStubInterface, TXKEY strin
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(TXKEY, queuedAsBytes)
+	err = APIstub.PutState(TXKEY, queuedAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateHistoryTransactionStatus(stub shim.ChaincodeStubInterface, HTXKEY string, TXID string, TXStatus string) error {
+func updateHistoryTransactionStatus(APIstub shim.ChaincodeStubInterface, HTXKEY string, TXID string, TXStatus string) error {
 
 	TimeNow2 := time.Now().Format(timelayout2)
-	historyTX, err := getHistoryTransactionStructFromID(stub, HTXKEY)
+	historyTX, err := getHistoryTransactionStructFromID(APIstub, HTXKEY)
 	if err != nil {
 		return err
 	}
@@ -919,17 +922,17 @@ func updateHistoryTransactionStatus(stub shim.ChaincodeStubInterface, HTXKEY str
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(HTXKEY, historyAsBytes)
+	err = APIstub.PutState(HTXKEY, historyAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateQueuedTransactionApproveStatus(stub shim.ChaincodeStubInterface, TXKEY string, TXID string, MatchedTXID string, TXStatus string) error {
+func updateQueuedTransactionApproveStatus(APIstub shim.ChaincodeStubInterface, TXKEY string, TXID string, MatchedTXID string, TXStatus string) error {
 
 	TimeNow2 := time.Now().Format(timelayout2)
-	queuedTX, err := getQueueStructFromID(stub, TXKEY)
+	queuedTX, err := getQueueStructFromID(APIstub, TXKEY)
 	if err != nil {
 		return err
 	}
@@ -1015,17 +1018,17 @@ func updateQueuedTransactionApproveStatus(stub shim.ChaincodeStubInterface, TXKE
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(TXKEY, queuedAsBytes)
+	err = APIstub.PutState(TXKEY, queuedAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateHistoryTransactionApproveStatus(stub shim.ChaincodeStubInterface, HTXKEY string, TXID string, MatchedTXID string, TXStatus string) error {
+func updateHistoryTransactionApproveStatus(APIstub shim.ChaincodeStubInterface, HTXKEY string, TXID string, MatchedTXID string, TXStatus string) error {
 
 	TimeNow2 := time.Now().Format(timelayout2)
-	historyTX, err := getHistoryTransactionStructFromID(stub, HTXKEY)
+	historyTX, err := getHistoryTransactionStructFromID(APIstub, HTXKEY)
 	if err != nil {
 		return err
 	}
@@ -1113,18 +1116,18 @@ func updateHistoryTransactionApproveStatus(stub shim.ChaincodeStubInterface, HTX
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(HTXKEY, historyAsBytes)
+	err = APIstub.PutState(HTXKEY, historyAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateTransactionTXHcode(stub shim.ChaincodeStubInterface, TXID string, TXHcode string) error {
+func updateTransactionTXHcode(APIstub shim.ChaincodeStubInterface, TXID string, TXHcode string) error {
 	fmt.Printf("updateTransactionTXHcode: TXID=%s,TXHcode=%s\n", TXID, TXHcode)
 
 	TimeNow2 := time.Now().Format(timelayout2)
-	transaction, err := getTransactionStructFromID(stub, TXID)
+	transaction, err := getTransactionStructFromID(APIstub, TXID)
 	if err != nil {
 		return err
 	}
@@ -1137,17 +1140,17 @@ func updateTransactionTXHcode(stub shim.ChaincodeStubInterface, TXID string, TXH
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(TXID, transactionAsBytes)
+	err = APIstub.PutState(TXID, transactionAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateQueuedTransactionTXHcode(stub shim.ChaincodeStubInterface, TXKEY string, TXID string, TXHcode string) error {
+func updateQueuedTransactionTXHcode(APIstub shim.ChaincodeStubInterface, TXKEY string, TXID string, TXHcode string) error {
 	fmt.Printf("updateQueuedTransactionTXHcode: TXKEY=%s,TXID=%s,TXHcode=%s\n", TXKEY, TXID, TXHcode)
 	TimeNow2 := time.Now().Format(timelayout2)
-	queuedTX, err := getQueueStructFromID(stub, TXKEY)
+	queuedTX, err := getQueueStructFromID(APIstub, TXKEY)
 	if err != nil {
 		return err
 	}
@@ -1176,17 +1179,17 @@ func updateQueuedTransactionTXHcode(stub shim.ChaincodeStubInterface, TXKEY stri
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(TXKEY, queuedAsBytes)
+	err = APIstub.PutState(TXKEY, queuedAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateHistoryTransactionTXHcode(stub shim.ChaincodeStubInterface, HTXKEY string, TXID string, TXHcode string) error {
+func updateHistoryTransactionTXHcode(APIstub shim.ChaincodeStubInterface, HTXKEY string, TXID string, TXHcode string) error {
 	fmt.Printf("updateHistoryTransactionTXHcode: HTXKEY=%s,TXID=%s,TXHcode=%s\n", HTXKEY, TXID, TXHcode)
 	TimeNow2 := time.Now().Format(timelayout2)
-	historyTX, err := getHistoryTransactionStructFromID(stub, HTXKEY)
+	historyTX, err := getHistoryTransactionStructFromID(APIstub, HTXKEY)
 	if err != nil {
 		return err
 	}
@@ -1218,14 +1221,14 @@ func updateHistoryTransactionTXHcode(stub shim.ChaincodeStubInterface, HTXKEY st
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(HTXKEY, historyAsBytes)
+	err = APIstub.PutState(HTXKEY, historyAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *SmartContract) updateQueuedTransactionHcode(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+func (s *SmartContract) updateQueuedTransactionHcode(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 3 {
 		return shim.Error("Incorrect number of arguments. Expecting 3")
@@ -1236,7 +1239,7 @@ func (s *SmartContract) updateQueuedTransactionHcode(stub shim.ChaincodeStubInte
 
 	fmt.Printf("updateQueuedTransactionHcode: TXKEY=%s,TXID=%s,TXHcode=%s\n", TXKEY, TXID, TXHcode)
 	TimeNow2 := time.Now().Format(timelayout2)
-	queuedTX, err := getQueueStructFromID(stub, TXKEY)
+	queuedTX, err := getQueueStructFromID(APIstub, TXKEY)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -1265,14 +1268,14 @@ func (s *SmartContract) updateQueuedTransactionHcode(stub shim.ChaincodeStubInte
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.PutState(TXKEY, queuedAsBytes)
+	err = APIstub.PutState(TXKEY, queuedAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	return shim.Success(queuedAsBytes)
 }
 
-func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+func (s *SmartContract) updateHistoryTransactionHcode(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 3 {
 		return shim.Error("Incorrect number of arguments. Expecting 3")
@@ -1283,7 +1286,7 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 
 	fmt.Printf("updateHistoryTransactionHcode: HTXKEY=%s,TXID=%s,TXHcode=%s\n", HTXKEY, TXID, TXHcode)
 	TimeNow2 := time.Now().Format(timelayout2)
-	historyTX, err := getHistoryTransactionStructFromID(stub, HTXKEY)
+	historyTX, err := getHistoryTransactionStructFromID(APIstub, HTXKEY)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -1314,7 +1317,7 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.PutState(HTXKEY, historyAsBytes)
+	err = APIstub.PutState(HTXKEY, historyAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -1322,16 +1325,16 @@ func (s *SmartContract) updateHistoryTransactionHcode(stub shim.ChaincodeStubInt
 }
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","SPOT","true"]}' -C myc 
 peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180906","Pending","0001"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["CorrectFXTradeTransfer", "B","0001","0002","2018/09/01","2018/11/30","USD/TWD","USD","1000000","ZAR","1000000","30","true","0001B20180906123212"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["CorrectFXTradeTransfer", "B","0001","0002","2018/09/01","2018/11/30","USD/TWD","USD","1000000","ZAR","1000000","30","SPOT","true","0001B20180921152043"]}' -C myc 
 OwnCptyID不能修改，如要修改直接刪除後再新增
 */
- func (s *SmartContract) CorrectFXTradeTransfer(stub shim.ChaincodeStubInterface,args []string) peer.Response {
+ func (s *SmartContract) CorrectFXTradeTransfer(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 
 	TimeNow := time.Now().Format(timelayout)
 
-	newTX, isPutInQueue, errMsg := validateCorrectTransaction(stub, args)
+	newTX, isPutInQueue, errMsg := validateCorrectTransaction(APIstub, args)
 	if errMsg != "" {
 		//return shim.Error(err.Error())
 		newTX.TXErrMsg = errMsg
@@ -1362,7 +1365,7 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 		newTX.isPutToQueue = true
 		fmt.Printf("2.TXKEYCorrect=%s\n", TXKEY)
 
-		queueAsBytes, err := stub.GetState(TXKEY)
+		queueAsBytes, err := APIstub.GetState(TXKEY)
 		if err != nil {
 			//return shim.Error(err.Error())
 			newTX.TXErrMsg = TXKEY + ":QueueID does not exits."
@@ -1373,7 +1376,7 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 		json.Unmarshal(queueAsBytes, &queuedTx)
 		fmt.Printf("3.HTXKEYCorrect=%s\n", HTXKEY)
 
-		historyAsBytes, err := stub.GetState(HTXKEY)
+		historyAsBytes, err := APIstub.GetState(HTXKEY)
 		if err != nil {
 			//return shim.Error(err.Error())
 			newTX.TXErrMsg = TXKEY + ":HistoryID does not exits."
@@ -1426,7 +1429,7 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 						newTX.MatchedTXID = val.TXID
 						queuedTx.Transactions[key].MatchedTXID = TXID
 						historyNewTX.Transactions[key].MatchedTXID = TXID
-						err = updateTransactionStatus(stub, val.TXID, "Matched", TXID)
+						err = updateTransactionStatus(APIstub, val.TXID, "Matched", TXID)
 						if err != nil {
 							//return shim.Error(err.Error())
 							newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Matched."
@@ -1450,7 +1453,7 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 						queuedTx.Transactions[key].TXMemo = ""
 						historyNewTX.Transactions[key].TXMemo = ""
 						newTX.TXMemo = ""
-						err := updateTransactionStatus(stub, val.TXID, "Finished", TXID)
+						err := updateTransactionStatus(APIstub, val.TXID, "Finished", TXID)
 						if err != nil {
 							//return shim.Error(err.Error())
 							newTX.TXErrMsg = "Failed to execute updateTransactionStatus = Finished."
@@ -1482,12 +1485,12 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 			}
 		}
 		QueuedAsBytes, err := json.Marshal(queuedTx)
-		err = stub.PutState(TXKEY, QueuedAsBytes)
+		err = APIstub.PutState(TXKEY, QueuedAsBytes)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
 		historyAsBytes, err = json.Marshal(historyNewTX)
-		err = stub.PutState(HTXKEY, historyAsBytes)
+		err = APIstub.PutState(HTXKEY, historyAsBytes)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -1496,7 +1499,7 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.PutState(TXID, TransactionAsBytes)
+	err = APIstub.PutState(TXID, TransactionAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	} 
@@ -1506,7 +1509,7 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 }  
 
 func validateCorrectTransaction(
-	stub shim.ChaincodeStubInterface,
+	APIstub shim.ChaincodeStubInterface,
 	args []string) (FXTrade, bool, string) {
 
 	TimeNow := time.Now().Format(timelayout)
@@ -1523,7 +1526,7 @@ func validateCorrectTransaction(
 	transaction.UpdateTime = TimeNow2
 	fmt.Println("TimeNow is %s", TimeNow)
 
-	err = checkArgArrayLength(args, 13)
+	err = checkArgArrayLength(args, 14)
 	if err != nil {
 		return transaction, false, "The args-length must be 13."
 	}
@@ -1561,14 +1564,17 @@ func validateCorrectTransaction(
 		return transaction, false, "NetPrice must be a non-empty string."
 	}
 	if len(args[11]) <= 0 {
-		return transaction, false, "isPutToQueue flag must be a non-empty string."
+		return transaction, false, "TXKinds must be a non-empty string."
 	}
 	if len(args[12]) <= 0 {
+		return transaction, false, "isPutToQueue flag must be a non-empty string."
+	}
+	if len(args[13]) <= 0 {
 		return transaction, false, "TXID flag must be a non-empty string."
 	}
 
-	TXID = strings.ToUpper(args[12])
-	sourceTX, err := getTransactionStructFromID(stub, TXID)
+	TXID = strings.ToUpper(args[13])
+	sourceTX, err := getTransactionStructFromID(APIstub, TXID)
 	if (sourceTX.TXStatus != "Pending") && (sourceTX.TXStatus != "Matched") {
 		return transaction, false, "Failed to find Transaction Pending/Matched TXStatus."
 	}
@@ -1653,7 +1659,7 @@ func validateCorrectTransaction(
 	transaction.TXHcode = TXID
 	transaction.TXStatus = "Pending"
 
-	err2 := updateTransactionTXHcode(stub, TXID, TXHcode)
+	err2 := updateTransactionTXHcode(APIstub, TXID, TXHcode)
 	if err2 != nil {
 		//return transaction, false, err2
 		transaction.TXMemo = "更正失敗"
@@ -1665,11 +1671,11 @@ func validateCorrectTransaction(
 
 } 
 
-/* func updateEndDayTransactionStatus(stub shim.ChaincodeStubInterface, TXID string) (string, error) {
+/* func updateEndDayTransactionStatus(APIstub shim.ChaincodeStubInterface, TXID string) (string, error) {
 	var MatchedTXID string
 	MatchedTXID = ""
 	TimeNow2 := time.Now().Format(timelayout2)
-	transaction, err := getTransactionStructFromID(stub, TXID)
+	transaction, err := getTransactionStructFromID(APIstub, TXID)
 	if transaction.TXStatus != "Pending" && transaction.TXStatus != "Waiting4Payment" && transaction.TXStatus != "PaymentError" {
 		return MatchedTXID, errors.New("Failed to find Transaction Pending OR Waiting4Payment TXStatus")
 	}
@@ -1692,7 +1698,7 @@ func validateCorrectTransaction(
 	if err != nil {
 		return MatchedTXID, err
 	}
-	err = stub.PutState(TXID, transactionAsBytes)
+	err = APIstub.PutState(TXID, transactionAsBytes)
 	if err != nil {
 		return MatchedTXID, err
 	}
@@ -1707,7 +1713,7 @@ func validateCorrectTransaction(
 			if err != nil {
 				return MatchedTXID, err
 			}
-			err = stub.PutState(MatchedTXID, transaction2AsBytes)
+			err = APIstub.PutState(MatchedTXID, transaction2AsBytes)
 			if err != nil {
 				return MatchedTXID, err
 			}
@@ -1763,10 +1769,10 @@ func validateCorrectTransaction(
 	return MatchedTXID, nil
 } */
 
-/* func updateEndDayQueuedTransactionStatus(stub shim.ChaincodeStubInterface, TXKEY string, TXID string, MatchedTXID string) error {
+/* func updateEndDayQueuedTransactionStatus(APIstub shim.ChaincodeStubInterface, TXKEY string, TXID string, MatchedTXID string) error {
 
 	TimeNow2 := time.Now().Format(timelayout2)
-	queuedTX, err := getQueueStructFromID(stub, TXKEY)
+	queuedTX, err := getQueueStructFromID(APIstub, TXKEY)
 	if err != nil {
 		return err
 	}
@@ -1821,17 +1827,17 @@ func validateCorrectTransaction(
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(TXKEY, queuedAsBytes)
+	err = APIstub.PutState(TXKEY, queuedAsBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 } */
 
-func updateEndDayHistoryTransactionStatus(stub shim.ChaincodeStubInterface, HTXKEY string, TXID string, MatchedTXID string) error {
+func updateEndDayHistoryTransactionStatus(APIstub shim.ChaincodeStubInterface, HTXKEY string, TXID string, MatchedTXID string) error {
 
 	TimeNow2 := time.Now().Format(timelayout2)
-	historyTX, err := getHistoryTransactionStructFromID(stub, HTXKEY)
+	historyTX, err := getHistoryTransactionStructFromID(APIstub, HTXKEY)
 	if err != nil {
 		return err
 	}
@@ -1886,7 +1892,7 @@ func updateEndDayHistoryTransactionStatus(stub shim.ChaincodeStubInterface, HTXK
 	if err != nil {
 		return err
 	}
-	err = stub.PutState(HTXKEY, historyAsBytes)
+	err = APIstub.PutState(HTXKEY, historyAsBytes)
 	if err != nil {
 		return err
 	}
@@ -2272,7 +2278,7 @@ func (s *SmartContract) queryAllTransactions(APIstub shim.ChaincodeStubInterface
 
 //peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"Transaction\",\"TXHcode\":\"0001B20180906123212\"}}"]}' -C myc
 //peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"2018/12/31\"}}"]}' -C myc
-func (s *SmartContract) queryTables(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+func (s *SmartContract) queryTables(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) < 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
@@ -2280,17 +2286,17 @@ func (s *SmartContract) queryTables(stub shim.ChaincodeStubInterface, args []str
 
 	queryString := args[0]
 
-	queryResults, err := getQueryResultForQueryString(stub, queryString)
+	queryResults, err := getQueryResultForQueryString(APIstub, queryString)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	return shim.Success(queryResults)
 }
 
-func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string)([] byte, error) {
+func getQueryResultForQueryString(APIstub shim.ChaincodeStubInterface, queryString string)([] byte, error) {
 	
 	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
-    resultsIterator, err := stub.GetQueryResult(queryString)
+    resultsIterator, err := APIstub.GetQueryResult(queryString)
     defer resultsIterator.Close()
     if err != nil {
 		fmt.Printf("- getQueryResultForQueryString resultsIterator error")
@@ -2753,14 +2759,14 @@ func checkArgArrayLength(
 //peer chaincode query -n mycc -c '{"Args":["fetchEURUSDviaOraclize"]}' -C myc
 func (s *SmartContract) fetchEURUSDviaOraclize(APIstub shim.ChaincodeStubInterface) peer.Response {
 	fmt.Println("============= START : Calling the oraclize chaincode =============")
-	//var datasource = "URL"                                                                  // Setting the Oraclize datasource
-	//var query = "json(https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD).USD" // Setting the query
+	var datasource = "URL"                                                                  // Setting the Oraclize datasource
+	var query = "json(https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD).USD" // Setting the query
 	//var query ="await request.get('https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD')"
-	//fmt.Printf("proof: %s", query)
-	//result, proof := oraclizeapi.OraclizeQuery_sync(APIstub, datasource, query, oraclizeapi.TLSNOTARY)
-	//fmt.Printf("proof: %s", proof)
-	//fmt.Printf("\nresult: %s\n", result)
-	//fmt.Println("Do something with the result...")
+	fmt.Printf("proof: %s", query)
+	result, proof := oraclizeapi.OraclizeQuery_sync(APIstub, datasource, query, oraclizeapi.TLSNOTARY)
+	fmt.Printf("proof: %s", proof)
+	fmt.Printf("\nresult: %s\n", result)
+	fmt.Println("Do something with the result...")
 	//var request = require('request')
     
 	fmt.Println("============= END : Calling the oraclize chaincode =============")
