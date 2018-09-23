@@ -86,11 +86,10 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
         return shim.Error("Failed to GetQueryResult")
 	}
 	transactionArr := []FXTrade{}
-	var i=0
+	var recint=0
 
 
 	for resultsIterator.HasNext() {
-
 
         queryResponse,err := resultsIterator.Next()
         if err != nil {
@@ -104,25 +103,25 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		transactionArr = append(transactionArr, transaction)
 		//fmt.Println("queryResponse.Value.NetPrice= " + strconv.FormatFloat(transactionArr[i].NetPrice, 'f', 4, 64) + "\n") 
 		//計算Spot MTM
-		//if transactionArr[i].TXKinds == "SPOT" {
+		if transactionArr[recint].TXKinds == "SPOT" {
 		   var TXKEY,TXID string
 		   var NetPrice, ClosePrice,MTM float64
 
 		   TXKEY = "MTM" + SubString(TimeNow, 0, 8)
-		   TXID = transactionArr[i].OwnCptyID + TimeNow
-		   NetPrice = transactionArr[i].NetPrice
+		   TXID = transactionArr[recint].OwnCptyID + TimeNow
+		   NetPrice = transactionArr[recint].NetPrice
 		   ClosePrice = 30.123     //get from API
 		   MTM = ClosePrice - NetPrice
 		   
-		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: "SPOT",NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
+		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: transactionArr[recint].TXKinds ,NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
 		   TransactionMTMsBytes, _ := json.Marshal(TransactionMTM)
 		   err1 := APIstub.PutState(TransactionMTM.TXKEY, TransactionMTMsBytes)
 		   if err1 != nil {
 			   fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
 			   return shim.Error(err1.Error())
 		   }
-		//}
-		i += 1 
+		}
+		recint += 1 
 	}	
 	return shim.Success(nil)
 }	
@@ -361,8 +360,8 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","FW","true"]}' -C myc 
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","FW","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","FW","true"]}' -C myc 
 */
 
 func (s *SmartContract) FXTradeTransfer(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {

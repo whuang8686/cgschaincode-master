@@ -73,7 +73,7 @@ type Cpty struct {
 
 type CptyISDA struct {
 	ObjectType           string          `json:"docType"`             //docType is used to distinguish the various types of objects in state database
-	CptyISDAID           string          `json:"CptyISDAID"`
+	CptyISDAID           string          `json:"CptyISDAID"`          //OwnCptyID + CptyID + TimeNow
 	OwnCptyID            string          `json:"OwnCptyID"`
 	CptyID               string          `json:"CptyID"`              //交易對手
 	CptyIndependAmt      int64           `json:"CptyIndependAmt"`     //交易對手單獨提列金額
@@ -147,7 +147,7 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	} else if function == "queryAllCpty" {
 		return s.queryAllCpty(APIstub, args)		
 	//CptyISDA
-	} else if function == "createCptyISDA" {
+	} else if function == "createCptyISDA" {
 		return s.createCptyISDA(APIstub, args)
 	} else if function == "updateCptyISDA" {
 		return s.updateCptyISDA(APIstub, args)
@@ -493,74 +493,86 @@ func (s *SmartContract) queryAllCpty(APIstub shim.ChaincodeStubInterface, args [
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "00001","CptyA","CptyB","0","0","25000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "00002","CptyA","CptyC","0","0","35000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "00003","CptyA","CptyD","0","0","45000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
+/*
+peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0002","0","0","25000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0003","0","0","35000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0004","0","0","45000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
+*/
 func (s *SmartContract) createCptyISDA(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
-	if len(args) != 16 {
-		return shim.Error("Incorrect number of arguments. Expecting 16")
+	TimeNow := time.Now().Format(timelayout)
+
+	if len(args) != 15 {
+		return shim.Error("Incorrect number of arguments. Expecting 15")
 	}
 
 	var newCptyIndependAmt, newOwnIndependAmt, newCptyThreshold, newOwnThreshold, newCptyMTA, newOwnMTA, newRounding int64
 	var newUSDCashPCT, newTWDCashPCT, newUSDBondPCT, newTWDBondPCT float64
+	var OwnCptyID,CptyID,CptyISDAID string
+	 
+	OwnCptyID = args[0]
+	CptyID = args[1]
 
-	newCptyIndependAmt, err := strconv.ParseInt(args[3], 10, 64)
+	newCptyIndependAmt, err := strconv.ParseInt(args[2], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newOwnIndependAmt, err = strconv.ParseInt(args[4], 10, 64)
+	newOwnIndependAmt, err = strconv.ParseInt(args[3], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCptyThreshold, err = strconv.ParseInt(args[5], 10, 64)
+	newCptyThreshold, err = strconv.ParseInt(args[4], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newOwnThreshold, err = strconv.ParseInt(args[6], 10, 64)
+	newOwnThreshold, err = strconv.ParseInt(args[5], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCptyMTA, err = strconv.ParseInt(args[7], 10, 64)
+	newCptyMTA, err = strconv.ParseInt(args[6], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newOwnMTA, err = strconv.ParseInt(args[8], 10, 64)
+	newOwnMTA, err = strconv.ParseInt(args[7], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newRounding, err = strconv.ParseInt(args[9], 10, 64)
+	newRounding, err = strconv.ParseInt(args[8], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDCashPCT, err = strconv.ParseFloat(args[12], 64)
+	newUSDCashPCT, err = strconv.ParseFloat(args[11], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newTWDCashPCT, err = strconv.ParseFloat(args[13], 64)
+	newTWDCashPCT, err = strconv.ParseFloat(args[12], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDBondPCT, err = strconv.ParseFloat(args[14], 64)
+	newUSDBondPCT, err = strconv.ParseFloat(args[13], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newTWDBondPCT, err = strconv.ParseFloat(args[15], 64)
+	newTWDBondPCT, err = strconv.ParseFloat(args[14], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	var CptyISDA = CptyISDA{ObjectType: "CptyISDA", CptyISDAID: args[0], OwnCptyID: args[1], CptyID: args[2], CptyIndependAmt: newCptyIndependAmt, OwnIndependAmt: newOwnIndependAmt, CptyThreshold: newCptyThreshold, OwnThreshold: newOwnThreshold, CptyMTA: newCptyMTA, OwnMTA: newOwnMTA, Rounding: newRounding, StartDate: args[10], EndDate: args[11], USDCashPCT: newUSDCashPCT, TWDCashPCT: newTWDCashPCT, USDBondPCT: newUSDBondPCT, TWDBondPCT: newTWDBondPCT}
+	CptyISDAID = OwnCptyID + CptyID + TimeNow 
+	fmt.Println("createCptyISDA= " + CptyISDAID + "\n") 
+
+	var CptyISDA = CptyISDA{ObjectType: "CptyISDA", CptyISDAID: CptyISDAID, OwnCptyID: OwnCptyID, CptyID: CptyID, CptyIndependAmt: newCptyIndependAmt, OwnIndependAmt: newOwnIndependAmt, CptyThreshold: newCptyThreshold, OwnThreshold: newOwnThreshold, CptyMTA: newCptyMTA, OwnMTA: newOwnMTA, Rounding: newRounding, StartDate: args[9], EndDate: args[10], USDCashPCT: newUSDCashPCT, TWDCashPCT: newTWDCashPCT, USDBondPCT: newUSDBondPCT, TWDBondPCT: newTWDBondPCT}
 	CptyISDAAsBytes, _ := json.Marshal(CptyISDA)
 	err1 := APIstub.PutState(CptyISDA.CptyISDAID, CptyISDAAsBytes)
 	if err1 != nil {
 		return shim.Error("Failed to create state")
+		fmt.Println("createCptyISDA.PutState\n") 
 	}
 
 	return shim.Success(nil)
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["updateCptyISDA", "00001","CptyA","CptyB","0","0","25500000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["updateCptyISDA", "0001","0002","0","0","25500000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89","0001000320180923051259"]}' -C myc
 func (s *SmartContract) updateCptyISDA(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 16 {
@@ -569,60 +581,60 @@ func (s *SmartContract) updateCptyISDA(APIstub shim.ChaincodeStubInterface, args
 
 	// 判斷是否有輸入值 
 
-	CptyISDAAsBytes, _ := APIstub.GetState(args[0])
+	CptyISDAAsBytes, _ := APIstub.GetState(args[15])
 	CptyISDA := CptyISDA{}
 
 	var newCptyIndependAmt, newOwnIndependAmt, newCptyThreshold, newOwnThreshold, newCptyMTA, newOwnMTA, newRounding int64
 	var newUSDCashPCT, newTWDCashPCT, newUSDBondPCT, newTWDBondPCT float64
 
-	newCptyIndependAmt, err := strconv.ParseInt(args[3], 10, 64)
+	newCptyIndependAmt, err := strconv.ParseInt(args[2], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newOwnIndependAmt, err = strconv.ParseInt(args[4], 10, 64)
+	newOwnIndependAmt, err = strconv.ParseInt(args[3], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCptyThreshold, err = strconv.ParseInt(args[5], 10, 64)
+	newCptyThreshold, err = strconv.ParseInt(args[4], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newOwnThreshold, err = strconv.ParseInt(args[6], 10, 64)
+	newOwnThreshold, err = strconv.ParseInt(args[5], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCptyMTA, err = strconv.ParseInt(args[7], 10, 64)
+	newCptyMTA, err = strconv.ParseInt(args[6], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newOwnMTA, err = strconv.ParseInt(args[8], 10, 64)
+	newOwnMTA, err = strconv.ParseInt(args[7], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newRounding, err = strconv.ParseInt(args[9], 10, 64)
+	newRounding, err = strconv.ParseInt(args[8], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDCashPCT, err = strconv.ParseFloat(args[12], 64)
+	newUSDCashPCT, err = strconv.ParseFloat(args[11], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newTWDCashPCT, err = strconv.ParseFloat(args[13], 64)
+	newTWDCashPCT, err = strconv.ParseFloat(args[12], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDBondPCT, err = strconv.ParseFloat(args[14], 64)
+	newUSDBondPCT, err = strconv.ParseFloat(args[13], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newTWDBondPCT, err = strconv.ParseFloat(args[15], 64)
+	newTWDBondPCT, err = strconv.ParseFloat(args[14], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	json.Unmarshal(CptyISDAAsBytes, &CptyISDA)
 	CptyISDA.ObjectType = "CptyISDA"
-	CptyISDA.OwnCptyID = args[1]
-	CptyISDA.CptyID = args[2]
+	CptyISDA.OwnCptyID = args[0]
+	CptyISDA.CptyID = args[1]
 	CptyISDA.CptyIndependAmt = newCptyIndependAmt
 	CptyISDA.OwnIndependAmt = newOwnIndependAmt
 	CptyISDA.CptyThreshold = newCptyThreshold
@@ -630,15 +642,15 @@ func (s *SmartContract) updateCptyISDA(APIstub shim.ChaincodeStubInterface, args
 	CptyISDA.CptyMTA = newCptyMTA
 	CptyISDA.OwnMTA = newOwnMTA
 	CptyISDA.Rounding = newRounding
-	CptyISDA.StartDate = args[10]
-	CptyISDA.EndDate = args[11]
+	CptyISDA.StartDate = args[9]
+	CptyISDA.EndDate = args[10]
 	CptyISDA.USDCashPCT = newUSDCashPCT
 	CptyISDA.TWDCashPCT = newTWDCashPCT
 	CptyISDA.USDBondPCT = newUSDBondPCT
 	CptyISDA.TWDBondPCT = newTWDBondPCT
 	
 	CptyISDAAsBytes, _ = json.Marshal(CptyISDA)
-	err1 := APIstub.PutState(args[0], CptyISDAAsBytes)
+	err1 := APIstub.PutState(args[15], CptyISDAAsBytes)
 	if err1 != nil {
 		return shim.Error("Failed to change state")
 	}
@@ -662,7 +674,7 @@ func (s *SmartContract) deleteCptyISDA(APIstub shim.ChaincodeStubInterface, args
 	return shim.Success(nil)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryCptyISDA","00001"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryCptyISDA","0001000320180923051259"]}' -C myc
 func (s *SmartContract) queryCptyISDA(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
