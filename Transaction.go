@@ -54,6 +54,7 @@ type TransactionMTM struct {
 	TXID         string        `json:"TXID"`           // 交易序號資料 ＝ OwnCptyID + TimeNow
 	FXTXID       string        `json:"FXTXID"`         // FXTrade交易序號資料 ＝ OwnCptyID + TXType + TimeNow
 	TXKinds      string        `json:"TXKinds"`        // Spot/FW
+	OwnCptyID    string        `json:"OwnCptyID"`
 	NetPrice     float64       `json:"NetPrice"`       // 成交價
 	ClosePrice   float64       `json:"ClosePrice"`     // 收盤價
     MTM          float64       `json:"MTM"`       	
@@ -113,7 +114,9 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		   ClosePrice = 30.123     //get from API
 		   MTM = ClosePrice - NetPrice
 		   
-		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: transactionArr[recint].TXKinds ,NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
+		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: transactionArr[recint].TXKinds ,OwnCptyID:transactionArr[recint].OwnCptyID,NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
+		   fmt.Println("queryResponse.TXKEY= " + TXKEY + "\n") 
+		   fmt.Println("queryResponse.TXID= " + TXID + "\n") 
 		   TransactionMTMsBytes, _ := json.Marshal(TransactionMTM)
 		   err1 := APIstub.PutState(TransactionMTM.TXKEY, TransactionMTMsBytes)
 		   if err1 != nil {
@@ -360,8 +363,8 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","FW","true"]}' -C myc 
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","FW","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","SPOT","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","SPOT","true"]}' -C myc 
 */
 
 func (s *SmartContract) FXTradeTransfer(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
@@ -2737,6 +2740,66 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 	fmt.Printf("%s", buffer.String())
 
 	return shim.Success(buffer.Bytes())
+}
+
+/*
+peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180923",""]}' -C myc
+peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","","0001"]}' -C myc
+peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180923","0002"]}' -C myc
+*/
+func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+	var queryString string
+
+	MTMKEY := args[0]
+	CptyID := args[1]
+	
+	//Query MTMDate 
+	if CptyID == "" {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"TXKEY\":\"%s\"}}", MTMKEY)
+	//Query Cpty	
+	} else if MTMKEY == "" {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"OwnCptyID\":\"%s\"}}", CptyID)
+	}  else {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"TXKEY\":\"%s\",\"OwnCptyID\":\"%s\"}}", MTMKEY,CptyID)	
+	}	
+    fmt.Printf("queryMTMTransactionStatus.queryString:\n%s\n", queryString)
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+    defer resultsIterator.Close()
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
+    bArrayMemberAlreadyWritten := false
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+        }
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+ 
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+    }
+    buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
 }
 
 

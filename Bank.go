@@ -209,7 +209,9 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	} else if function == "queryQueuedTransactionStatus" {
 	    return s.queryQueuedTransactionStatus(APIstub, args)
 	} else if function == "queryHistoryTransactionStatus" {
-	    return s.queryHistoryTransactionStatus(APIstub, args)
+		return s.queryHistoryTransactionStatus(APIstub, args)
+	} else if function == "queryMTMTransactionStatus" {
+			return s.queryMTMTransactionStatus(APIstub, args)
 	} else if function == "updateQueuedTransactionHcode" {
 	    return s.updateQueuedTransactionHcode(APIstub, args)
 	 } else if function == "updateHistoryTransactionHcode" {
