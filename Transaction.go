@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
-	oraclizeapi "github.com/oraclize/fabric-api"
+	//oraclizeapi "github.com/oraclize/fabric-api"
 )
 
 const TransactionObjectType string = "Transaction"
@@ -50,17 +50,18 @@ type TransactionHistory struct {
 
 type TransactionMTM struct {
 	ObjectType   string        `json:"docType"`        // default set to "MTM"
-	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(HYYYYMMDD)
+	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(MTMYYYYMMDD)
 	TXID         string        `json:"TXID"`           // 交易序號資料 ＝ OwnCptyID + TimeNow
 	FXTXID       string        `json:"FXTXID"`         // FXTrade交易序號資料 ＝ OwnCptyID + TXType + TimeNow
 	TXKinds      string        `json:"TXKinds"`        // Spot/FW
 	OwnCptyID    string        `json:"OwnCptyID"`
+	CptyID       string        `json:"CptyID"`         //交易對手
 	NetPrice     float64       `json:"NetPrice"`       // 成交價
 	ClosePrice   float64       `json:"ClosePrice"`     // 收盤價
     MTM          float64       `json:"MTM"`       	
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "2018/12/01"]}' -C myc 
+//peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "2018/09/26"]}' -C myc 
 func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 	
 	TimeNow := time.Now().Format(timelayout)
@@ -70,8 +71,11 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
 
+	TXKEY := args[0]
+	datadate := "MTM" + TXKEY[0:4] + TXKEY[5:7] + TXKEY[8:10]
+	
 	// Delete the key from the state in ledger
-	errMsg := APIstub.DelState(args[0])
+	errMsg := APIstub.DelState(datadate)
 	if errMsg != nil {
 		return shim.Error("Failed to DelState")
 	}
@@ -87,7 +91,7 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
         return shim.Error("Failed to GetQueryResult")
 	}
 	transactionArr := []FXTrade{}
-	var recint=0
+	var recint int64= 0
 
 
 	for resultsIterator.HasNext() {
@@ -109,12 +113,13 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		   var NetPrice, ClosePrice,MTM float64
 
 		   TXKEY = "MTM" + SubString(TimeNow, 0, 8)
-		   TXID = transactionArr[recint].OwnCptyID + TimeNow
+		   TXID = transactionArr[recint].OwnCptyID + TimeNow + strconv.FormatInt(recint,16)
 		   NetPrice = transactionArr[recint].NetPrice
 		   ClosePrice = 30.123     //get from API
 		   MTM = ClosePrice - NetPrice
+
 		   
-		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: transactionArr[recint].TXKinds ,OwnCptyID:transactionArr[recint].OwnCptyID,NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
+		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: transactionArr[recint].TXKinds ,OwnCptyID:transactionArr[recint].OwnCptyID,CptyID:transactionArr[recint].CptyID,NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
 		   fmt.Println("queryResponse.TXKEY= " + TXKEY + "\n") 
 		   fmt.Println("queryResponse.TXID= " + TXID + "\n") 
 		   TransactionMTMsBytes, _ := json.Marshal(TransactionMTM)
@@ -2743,16 +2748,16 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 }
 
 /*
-peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180923",""]}' -C myc
+peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180926",""]}' -C myc
 peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","","0001"]}' -C myc
-peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180923","0002"]}' -C myc
+peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180925","0002"]}' -C myc
 */
 func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
-	var queryString string
+	var queryString,queryString2 string
 
 	MTMKEY := args[0]
 	CptyID := args[1]
@@ -2763,20 +2768,27 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
 	//Query Cpty	
 	} else if MTMKEY == "" {
 		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"OwnCptyID\":\"%s\"}}", CptyID)
+		queryString2 = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"CptyID\":\"%s\"}}", CptyID)
 	}  else {
 		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"TXKEY\":\"%s\",\"OwnCptyID\":\"%s\"}}", MTMKEY,CptyID)	
+		queryString2 = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"TXKEY\":\"%s\",\"CptyID\":\"%s\"}}", MTMKEY,CptyID)
 	}	
-    fmt.Printf("queryMTMTransactionStatus.queryString:\n%s\n", queryString)
+	fmt.Sprintf("queryMTMTransactionStatus.queryString:\n%s\n", queryString)
+	fmt.Sprintf("queryMTMTransactionStatus.queryString2:\n%s\n", queryString2)
+	fmt.Printf("APIstub.GetQueryResult(queryString)***\n")
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)\n")
     if err != nil {
         return shim.Error(err.Error())
     }
-    defer resultsIterator.Close()
+	defer resultsIterator.Close()
+	fmt.Printf("esultsIterator.Close")
  
     var buffer bytes.Buffer
     buffer.WriteString("[")
  
-    bArrayMemberAlreadyWritten := false
+	bArrayMemberAlreadyWritten := false
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
     for resultsIterator.HasNext() {
         queryResponse, err := resultsIterator.Next()
         if err != nil {
@@ -2785,7 +2797,8 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
          
         if bArrayMemberAlreadyWritten == true {
             buffer.WriteString(",")
-        }
+		}
+		fmt.Printf("resultsIterator.HasNext\n")
         buffer.WriteString("{\"Key\":")
         buffer.WriteString("\"")
         buffer.WriteString(queryResponse.Key)
@@ -2796,7 +2809,31 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
         buffer.WriteString(string(queryResponse.Value))
         buffer.WriteString("}")
         bArrayMemberAlreadyWritten = true
+	}
+	
+	resultsIterator2, err := APIstub.GetQueryResult(queryString2)
+    if err != nil {
+        return shim.Error(err.Error())
     }
+	defer resultsIterator2.Close()
+	bArrayMemberAlreadyWritten2 := false
+    for resultsIterator2.HasNext() {
+        queryResponse2, err := resultsIterator2.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten2 == true {
+            buffer.WriteString(",")
+        }
+        fmt.Printf("resultsIterator2.HasNext\n")
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse2.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten2 = true
+	}
+
     buffer.WriteString("]")
  
     return shim.Success(buffer.Bytes())
@@ -2819,6 +2856,7 @@ func checkArgArrayLength(
 }
 
 //peer chaincode query -n mycc -c '{"Args":["fetchEURUSDviaOraclize"]}' -C myc
+/*
 func (s *SmartContract) fetchEURUSDviaOraclize(APIstub shim.ChaincodeStubInterface) peer.Response {
 	fmt.Println("============= START : Calling the oraclize chaincode =============")
 	var datasource = "URL"                                                                  // Setting the Oraclize datasource
@@ -2834,3 +2872,4 @@ func (s *SmartContract) fetchEURUSDviaOraclize(APIstub shim.ChaincodeStubInterfa
 	fmt.Println("============= END : Calling the oraclize chaincode =============")
 	return shim.Success(nil)
 } 
+*/
