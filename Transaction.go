@@ -21,6 +21,7 @@ const TransactionObjectType string = "Transaction"
 const QueuedTXObjectType string = "QueuedTX"
 const HistoryTXObjectType string = "HistoryTX"
 const TransactionMTMObjectType string = "MTM"
+const MTMTXObjectType string = "MTMTX"
 const timelayout string = "20060102150405"
 const timelayout2 string = "2006/01/02 15:04:05"
 
@@ -51,6 +52,12 @@ type TransactionHistory struct {
 type TransactionMTM struct {
 	ObjectType   string        `json:"docType"`        // default set to "MTM"
 	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(MTMYYYYMMDD)
+	TXIDs        []string      `json:"TXIDs"`          // 交易序號資料
+	Transactions []FXTradeMTM  `json:"Transactions"`   // 當日交易資料
+}
+
+type FXTradeMTM struct {
+	ObjectType   string        `json:"docType"`        //docType is used to distinguish the various types of objects in state database
 	TXID         string        `json:"TXID"`           // 交易序號資料 ＝ OwnCptyID + TimeNow
 	FXTXID       string        `json:"FXTXID"`         // FXTrade交易序號資料 ＝ OwnCptyID + TXType + TimeNow
 	TXKinds      string        `json:"TXKinds"`        // Spot/FW
@@ -61,7 +68,10 @@ type TransactionMTM struct {
     MTM          float64       `json:"MTM"`       	
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "2018/09/26"]}' -C myc 
+/*
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "20180928"]}' -C myc 
+peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc
+*/
 func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 	
 	TimeNow := time.Now().Format(timelayout)
@@ -72,8 +82,10 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 	}
 
 	TXKEY := args[0]
-	datadate := "MTM" + TXKEY[0:4] + TXKEY[5:7] + TXKEY[8:10]
+	datadate := "MTM" + args[0] 
+	MaturityDate := TXKEY[0:4] + "/" + TXKEY[4:6] + "/" + TXKEY[6:8]
 	
+	fmt.Println("MaturityDate=",MaturityDate+"\n")
 	// Delete the key from the state in ledger
 	errMsg := APIstub.DelState(datadate)
 	if errMsg != nil {
@@ -82,7 +94,7 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 
 	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/12/01"}}}
     //queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
-	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"}}}", args[0])
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"}}}", MaturityDate)
 
 	fmt.Println("queryString= " + queryString + "\n") 
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
@@ -114,16 +126,39 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 
 		   TXKEY = "MTM" + SubString(TimeNow, 0, 8)
 		   TXID = transactionArr[recint].OwnCptyID + TimeNow + strconv.FormatInt(recint,16)
+
+		   MTMAsBytes, err := APIstub.GetState(TXKEY)
+		   mtmTx := TransactionMTM{}
+		   json.Unmarshal(MTMAsBytes, &mtmTx)
+
+		   mtmTx.ObjectType = MTMTXObjectType
+		   mtmTx.TXKEY = TXKEY
+
+		   transactionMTM := FXTradeMTM{}
+		   transactionMTM.ObjectType = TransactionMTMObjectType
+		   transactionMTM.TXID = TXID
+		   transactionMTM.FXTXID = queryResponse.Key
+		   transactionMTM.TXKinds = transactionArr[recint].TXKinds
+		   transactionMTM.OwnCptyID = transactionArr[recint].OwnCptyID
+		   transactionMTM.CptyID  = transactionArr[recint].CptyID
+           transactionMTM.NetPrice = transactionArr[recint].NetPrice
+		   transactionMTM.ClosePrice = 30.123 //get from API 
+
 		   NetPrice = transactionArr[recint].NetPrice
 		   ClosePrice = 30.123     //get from API
 		   MTM = ClosePrice - NetPrice
+		   transactionMTM.MTM = MTM
+		   mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
+		   mtmTx.Transactions = append(mtmTx.Transactions, transactionMTM)
 
-		   
-		   var TransactionMTM = TransactionMTM{ObjectType: TransactionMTMObjectType, TXKEY: TXKEY, TXID: TXID, FXTXID:queryResponse.Key, TXKinds: transactionArr[recint].TXKinds ,OwnCptyID:transactionArr[recint].OwnCptyID,CptyID:transactionArr[recint].CptyID,NetPrice:NetPrice,ClosePrice:ClosePrice, MTM:MTM}
 		   fmt.Println("queryResponse.TXKEY= " + TXKEY + "\n") 
 		   fmt.Println("queryResponse.TXID= " + TXID + "\n") 
-		   TransactionMTMsBytes, _ := json.Marshal(TransactionMTM)
-		   err1 := APIstub.PutState(TransactionMTM.TXKEY, TransactionMTMsBytes)
+
+		   TransactionMTMsBytes, err1 :=json.Marshal(mtmTx)
+		   if err != nil {
+				return shim.Error(err.Error())
+		   }
+		   err1 = APIstub.PutState(TXKEY, TransactionMTMsBytes)
 		   if err1 != nil {
 			   fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
 			   return shim.Error(err1.Error())
@@ -2485,7 +2520,7 @@ func (s *SmartContract) queryAllTransactionKeys(APIstub shim.ChaincodeStubInterf
 
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180904","Pending","0001"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryQueuedTransactionStatus","20180928","Pending","0001"]}' -C myc
 func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 3 {
@@ -2747,11 +2782,92 @@ func (s *SmartContract) queryHistoryTransactionStatus(APIstub shim.ChaincodeStub
 	return shim.Success(buffer.Bytes())
 }
 
+//peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180928","0001"]}' -C myc
+func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+	MTMTXKEY := args[0]
+	CptyID := args[1]
+
+	MTMAsBytes, _ := APIstub.GetState(MTMTXKEY)
+	MTMTX := TransactionMTM{}
+	json.Unmarshal(MTMAsBytes, &MTMTX)
+
+	var doflg bool
+	doflg = false
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+	buffer.WriteString("{\"MTMTXKEY\":")
+	buffer.WriteString("\"")
+	buffer.WriteString(MTMTX.TXKEY)
+	buffer.WriteString("\"")
+	buffer.WriteString(",\"Transactions\":[")
+	bArrayMemberAlreadyWritten := false
+	for key, val := range MTMTX.Transactions {
+		if (val.OwnCptyID == CptyID || val.CptyID == CptyID || CptyID == "All") {
+			if bArrayMemberAlreadyWritten == true {
+				buffer.WriteString(",")
+			}
+			buffer.WriteString("{\"MTMKey\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.Itoa(key + 1))
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"TXID\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(MTMTX.Transactions[key].TXID)
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"FXTXID\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(MTMTX.Transactions[key].FXTXID)
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"TXKinds\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(MTMTX.Transactions[key].TXKinds)
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"OwnCptyID\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(MTMTX.Transactions[key].OwnCptyID)
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"CptyID\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(MTMTX.Transactions[key].CptyID)
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"NetPrice\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.FormatFloat(MTMTX.Transactions[key].NetPrice,'f', 4, 64))
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"ClosePrice\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.FormatFloat(MTMTX.Transactions[key].ClosePrice,'f', 4, 64))
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"MTM\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.FormatFloat(MTMTX.Transactions[key].MTM,'f', 4, 64))
+			buffer.WriteString("\"")
+			buffer.WriteString("}")
+			bArrayMemberAlreadyWritten = true
+			doflg = true
+		}
+	}
+	buffer.WriteString("]")
+	if doflg != true {
+		//return shim.Error("Failed to find TransactionHistory ")
+		buffer.WriteString(", \"Value\":")
+		buffer.WriteString("Failed to find MTMTransaction")
+	}
+	buffer.WriteString("}]")
+	fmt.Printf("%s", buffer.String())
+
+	return shim.Success(buffer.Bytes())
+}
+
 /*
-peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180926",""]}' -C myc
+peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180928",""]}' -C myc
 peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","","0001"]}' -C myc
-peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180925","0002"]}' -C myc
-*/
+peer chaincode query -n mycc -c '{"Args":["queryMTMTransactionStatus","MTM20180928","0002"]}' -C myc
+
 func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -2773,9 +2889,9 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
 		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"TXKEY\":\"%s\",\"OwnCptyID\":\"%s\"}}", MTMKEY,CptyID)	
 		queryString2 = fmt.Sprintf("{\"selector\":{\"docType\":\"MTM\",\"TXKEY\":\"%s\",\"CptyID\":\"%s\"}}", MTMKEY,CptyID)
 	}	
-	fmt.Sprintf("queryMTMTransactionStatus.queryString:\n%s\n", queryString)
-	fmt.Sprintf("queryMTMTransactionStatus.queryString2:\n%s\n", queryString2)
-	fmt.Printf("APIstub.GetQueryResult(queryString)***\n")
+	fmt.Printf("queryMTMTransactionStatus.queryString:\n%s\n", queryString)
+	fmt.Printf("queryMTMTransactionStatus.queryString2:\n%s\n", queryString2)
+
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
 	fmt.Printf("APIstub.GetQueryResult(queryString)\n")
     if err != nil {
@@ -2811,34 +2927,35 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
         bArrayMemberAlreadyWritten = true
 	}
 	
-	resultsIterator2, err := APIstub.GetQueryResult(queryString2)
-    if err != nil {
-        return shim.Error(err.Error())
-    }
-	defer resultsIterator2.Close()
-	bArrayMemberAlreadyWritten2 := false
-    for resultsIterator2.HasNext() {
-        queryResponse2, err := resultsIterator2.Next()
-        if err != nil {
-            return shim.Error(err.Error())
-        }
+	if CptyID != "" {
+		resultsIterator2, err := APIstub.GetQueryResult(queryString2)
+    	if err != nil {
+        	return shim.Error(err.Error())
+    	}
+		defer resultsIterator2.Close()
+		bArrayMemberAlreadyWritten2 := false
+    	for resultsIterator2.HasNext() {
+        	queryResponse2, err := resultsIterator2.Next()
+        	if err != nil {
+            	return shim.Error(err.Error())
+        	}
          
-        if bArrayMemberAlreadyWritten2 == true {
+        	if bArrayMemberAlreadyWritten2 == true {
             buffer.WriteString(",")
-        }
-        fmt.Printf("resultsIterator2.HasNext\n")
-        buffer.WriteString(", \"Record\":")
+        	}
+        	fmt.Printf("resultsIterator2.HasNext\n")
+        	buffer.WriteString(", \"Record\":")
          
-        buffer.WriteString(string(queryResponse2.Value))
-        buffer.WriteString("}")
-        bArrayMemberAlreadyWritten2 = true
-	}
-
+        	buffer.WriteString(string(queryResponse2.Value))
+        	buffer.WriteString("}")
+        	bArrayMemberAlreadyWritten2 = true
+		}
+    }
     buffer.WriteString("]")
  
     return shim.Success(buffer.Bytes())
 }
-
+*/
 
 func checkArgArrayLength(
 	args []string,
