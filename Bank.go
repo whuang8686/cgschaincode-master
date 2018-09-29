@@ -211,7 +211,9 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	} else if function == "queryHistoryTransactionStatus" {
 		return s.queryHistoryTransactionStatus(APIstub, args)
 	} else if function == "queryMTMTransactionStatus" {
-			return s.queryMTMTransactionStatus(APIstub, args)
+		return s.queryMTMTransactionStatus(APIstub, args)
+	} else if function == "queryCptyISDAStatus" {
+		return s.queryCptyISDAStatus(APIstub, args)		
 	} else if function == "updateQueuedTransactionHcode" {
 	    return s.updateQueuedTransactionHcode(APIstub, args)
 	 } else if function == "updateHistoryTransactionHcode" {
@@ -496,8 +498,8 @@ func (s *SmartContract) queryAllCpty(APIstub shim.ChaincodeStubInterface, args [
 }
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0002","0","0","25000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
 peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0003","0","0","35000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0002","0","0","25000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
 peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0004","0","0","45000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
 */
 func (s *SmartContract) createCptyISDA(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
@@ -734,162 +736,85 @@ func (s *SmartContract) queryAllCptyISDA(APIstub shim.ChaincodeStubInterface, ar
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000001","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000002","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createFXTrade", "000003","CptyA","CptyB","2018/01/01","2018/12/31","USD/TWD","USD","31206192","TWD","9310367.3832","29.835"]}' -C myc
-
-/* func (s *SmartContract) createFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
-
-	if len(args) != 11 {
-		return shim.Error("Incorrect number of arguments. Expecting 11")
-	}
-
-	var newAmount1, newAmount2, newNetPrice float64
-
-	newAmount1, err := strconv.ParseFloat(args[7], 64)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	newAmount2, err = strconv.ParseFloat(args[9], 64)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	newNetPrice, err = strconv.ParseFloat(args[10], 64)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	var FXTrade = FXTrade{ObjectType: "FXTrade", TradeID: args[0], OwnCptyID: args[1], CptyID: args[2], TradeDate: args[3], MaturityDate: args[4], Contract: args[5], Curr1: args[6], Amount1: newAmount1, Curr2: args[8], Amount2: newAmount2, NetPrice: newNetPrice}
-	FXTradeAsBytes, _ := json.Marshal(FXTrade)
-	err1 := APIstub.PutState(FXTrade.TradeID, FXTradeAsBytes)
-	if err1 != nil {
-		return shim.Error("Failed to create state")
-	}
-
-	return shim.Success(nil)
-} */
-
-//peer chaincode invoke -n mycc -c '{"Args":["updateFXTrade", "000001","CptyA","CptyB","2018/01/01","2018/12/31","USD/JPY","USD","31206192","JPY","9310367.3832","29.835"]}' -C myc
-/* func (s *SmartContract) updateFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
-
-	if len(args) != 11 {
-		return shim.Error("Incorrect number of arguments. Expecting 11")
-	}
-
-	// 判斷是否有輸入值 
-
-	FXTradeAsBytes, _ := APIstub.GetState(args[0])
-	FXTrade := FXTrade{}
-
-	var newAmount1, newAmount2, newNetPrice float64
-
-	newAmount1, err := strconv.ParseFloat(args[7], 64)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	newAmount2, err = strconv.ParseFloat(args[9], 64)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	newNetPrice, err = strconv.ParseFloat(args[10], 64)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	json.Unmarshal(FXTradeAsBytes, &FXTrade)
-	FXTrade.ObjectType = "FXTrade"
-	FXTrade.OwnCptyID = args[1]
-	FXTrade.CptyID = args[2]
-	FXTrade.TradeDate = args[3]
-	FXTrade.MaturityDate = args[4]
-	FXTrade.Contract = args[5]
-	FXTrade.Curr1 = args[6]
-	FXTrade.Amount1 = newAmount1
-	FXTrade.Curr2 = args[8]
-	FXTrade.Amount2 = newAmount2
-	FXTrade.NetPrice = newNetPrice
-	
-	FXTradeAsBytes, _ = json.Marshal(FXTrade)
-	err1 := APIstub.PutState(args[0], FXTradeAsBytes)
-	if err1 != nil {
-		return shim.Error("Failed to change state")
-	}
-
-	return shim.Success(nil)
-} */
-
-//peer chaincode invoke -n mycc -c '{"Args":["deleteFXTrade", "000001"]}' -C myc
-/* func (s *SmartContract) deleteFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+//peer chaincode query -n mycc -c '{"Args":["queryCptyISDAStatus","0001"]}' -C myc
+func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
+	var queryString,queryString2 string
+	CptyID := args[0]
 
-	// Delete the key from the state in ledger
-	err := APIstub.DelState(args[0])
-	if err != nil {
-		return shim.Error("Failed to delete state")
-	}
+	if CptyID == "All" {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"CptyISDA\"}}")
+	}  else {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"CptyISDA\",\"OwnCptyID\":\"%s\"}}", CptyID)	
+		queryString2 = fmt.Sprintf("{\"selector\":{\"docType\":\"CptyISDA\",\"CptyID\":\"%s\"}}", CptyID)	
+	}	
 
-	return shim.Success(nil)
-} */
-
-//peer chaincode query -n mycc -c '{"Args":["queryFXTrade","000001"]}' -C myc
-/* func (s *SmartContract) queryFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
-
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
-	}
-
-	FXTradeAsBytes, _ := APIstub.GetState(args[0])
-	return shim.Success(FXTradeAsBytes)
-} */
-
-//peer chaincode query -n mycc -c '{"Args":["queryAllFXTrade","000001","999999"]}' -C myc
-/* func (s *SmartContract) queryAllFXTrade(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
-
-	if len(args) != 2 {
-		return shim.Error("Incorrect number of arguments. Expecting 2")
-	}
-	startKey := args[0]
-	endKey := args[1]
-
-	resultsIterator, err := APIstub.GetStateByRange(startKey, endKey)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
 	defer resultsIterator.Close()
-
-	// buffer is a JSON array containing QueryResults
-	var buffer bytes.Buffer
-	buffer.WriteString("[")
-
+	fmt.Printf("esultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
 	bArrayMemberAlreadyWritten := false
-	for resultsIterator.HasNext() {
-		queryResponse, err := resultsIterator.Next()
-		if err != nil {
-			return shim.Error(err.Error())
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
 		}
-		// Add a comma before array members, suppress it for the first array member
-		if bArrayMemberAlreadyWritten == true {
-			buffer.WriteString(",")
-		}
-		buffer.WriteString("{\"Key\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(queryResponse.Key)
-		buffer.WriteString("\"")
-
-		buffer.WriteString(", \"Record\":")
-		// Record is a JSON object, so we write as-is
-		buffer.WriteString(string(queryResponse.Value))
-		buffer.WriteString("}")
-		bArrayMemberAlreadyWritten = true
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+ 
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
 	}
-	buffer.WriteString("]")
-
-	fmt.Printf("%s", buffer.String())
-
-	return shim.Success(buffer.Bytes())
-} */
+	
+	if CptyID != "All" {
+		resultsIterator2, err := APIstub.GetQueryResult(queryString2)
+    	if err != nil {
+        	return shim.Error(err.Error())
+    	}
+		defer resultsIterator2.Close()
+		bArrayMemberAlreadyWritten2 := false
+    	for resultsIterator2.HasNext() {
+        	queryResponse2, err := resultsIterator2.Next()
+        	if err != nil {
+            	return shim.Error(err.Error())
+        	}
+         
+        	if bArrayMemberAlreadyWritten2 == true {
+            buffer.WriteString(",")
+        	}
+        	fmt.Printf("resultsIterator2.HasNext\n")
+        	buffer.WriteString(", \"Record\":")
+         
+        	buffer.WriteString(string(queryResponse2.Value))
+        	buffer.WriteString("}")
+        	bArrayMemberAlreadyWritten2 = true
+		}
+    }
+    buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
+}
 
 // The main function is only relevant in unit test mode. Only included here for completeness.
 func main() {
