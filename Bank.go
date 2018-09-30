@@ -84,7 +84,7 @@ type CptyISDA struct {
 	OwnMTA               int64           `json:"OwnMTA"`              //本行最低轉讓金額
 	Rounding             int64           `json:"Rounding"`            //整數計算
 	StartDate            string          `json:"StartDate"`           //合約起日
-	EndDate              string          `json:"USD Cash Percentage"` //合約迄日
+	EndDate              string          `json:"EndDate"`             //合約迄日
 	USDCashPCT           float64         `json:"USDCashPCT"`          //USDCashPCT
 	TWDCashPCT           float64         `json:"TWDCashPCT"`          //TWDCashPCT
 	USDBondPCT           float64         `json:"USDBondPCT"`          //USDBondPCT
@@ -736,7 +736,7 @@ func (s *SmartContract) queryAllCptyISDA(APIstub shim.ChaincodeStubInterface, ar
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryCptyISDAStatus","0001"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryCptyISDAStatus","0002"]}' -C myc
 func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
@@ -779,7 +779,6 @@ func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface,
         buffer.WriteString("\"")
         buffer.WriteString(queryResponse.Key)
         buffer.WriteString("\"")
- 
         buffer.WriteString(", \"Record\":")
          
         buffer.WriteString(string(queryResponse.Value))
@@ -803,8 +802,12 @@ func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface,
         	if bArrayMemberAlreadyWritten2 == true {
             buffer.WriteString(",")
         	}
-        	fmt.Printf("resultsIterator2.HasNext\n")
-        	buffer.WriteString(", \"Record\":")
+			fmt.Printf("resultsIterator2.HasNext\n")
+			buffer.WriteString("{\"Key\":")
+        	buffer.WriteString("\"")
+        	buffer.WriteString(queryResponse2.Key)
+        	buffer.WriteString("\"")
+			buffer.WriteString(", \"Record\":")
          
         	buffer.WriteString(string(queryResponse2.Value))
         	buffer.WriteString("}")
