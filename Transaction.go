@@ -69,6 +69,111 @@ type FXTradeMTM struct {
 }
 
 /*
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeSettlment", "2018/12/30"]}' -C myc 
+peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc
+*/
+func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
+	
+	TimeNow := time.Now().Format(timelayout)
+
+	//先前除當日資料
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	TXKEY := args[0]
+	datadate := "MTM" + args[0] 
+	MaturityDate := TXKEY[0:4] + "/" + TXKEY[4:6] + "/" + TXKEY[6:8]
+	
+	fmt.Println("MaturityDate=",MaturityDate+"\n")
+	// Delete the key from the state in ledger
+	errMsg := APIstub.DelState(datadate)
+	if errMsg != nil {
+		return shim.Error("Failed to DelState")
+	}
+
+	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/12/01"}}}
+	//queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
+	
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":\"%s\",\"TXStatus\":\"Pending\"}}", MaturityDate)
+
+	fmt.Println("queryString= " + queryString + "\n") 
+	
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+    defer resultsIterator.Close()
+    if err != nil {
+        return shim.Error("Failed to GetQueryResult")
+	}
+	
+	transactionArr := []FXTrade{}
+	var recint int64= 0
+
+
+	for resultsIterator.HasNext() {
+
+        queryResponse,err := resultsIterator.Next()
+        if err != nil {
+			return shim.Error("Failed to Next")
+		}
+		fmt.Println("queryResponse.Key= " + queryResponse.Key + "\n") 
+	
+		jsonByteObj := queryResponse.Value
+		transaction := FXTrade{}
+		json.Unmarshal(jsonByteObj, &transaction)
+		transactionArr = append(transactionArr, transaction)
+		//fmt.Println("queryResponse.Value.NetPrice= " + strconv.FormatFloat(transactionArr[i].NetPrice, 'f', 4, 64) + "\n") 
+		//計算Spot MTM
+		if transactionArr[recint].TXKinds == "SPOT" {
+		   var TXKEY,TXID string
+		   var NetPrice, ClosePrice,MTM float64
+
+		   TXKEY = "MTM" + SubString(TimeNow, 0, 8)
+		   TXID = transactionArr[recint].OwnCptyID + TimeNow + strconv.FormatInt(recint,16)
+
+		   MTMAsBytes, err := APIstub.GetState(TXKEY)
+		   mtmTx := TransactionMTM{}
+		   json.Unmarshal(MTMAsBytes, &mtmTx)
+
+		   mtmTx.ObjectType = MTMTXObjectType
+		   mtmTx.TXKEY = TXKEY
+
+		   transactionMTM := FXTradeMTM{}
+		   transactionMTM.ObjectType = TransactionMTMObjectType
+		   transactionMTM.TXID = TXID
+		   transactionMTM.FXTXID = queryResponse.Key
+		   transactionMTM.TXKinds = transactionArr[recint].TXKinds
+		   transactionMTM.OwnCptyID = transactionArr[recint].OwnCptyID
+		   transactionMTM.CptyID  = transactionArr[recint].CptyID
+           transactionMTM.NetPrice = transactionArr[recint].NetPrice
+		   transactionMTM.ClosePrice = 30.123 //get from API 
+
+		   NetPrice = transactionArr[recint].NetPrice
+		   ClosePrice = 30.123     //get from API
+		   MTM = ClosePrice - NetPrice
+		   transactionMTM.MTM = MTM
+		   mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
+		   mtmTx.Transactions = append(mtmTx.Transactions, transactionMTM)
+
+		   fmt.Println("queryResponse.TXKEY= " + TXKEY + "\n") 
+		   fmt.Println("queryResponse.TXID= " + TXID + "\n") 
+
+		   TransactionMTMsBytes, err1 :=json.Marshal(mtmTx)
+		   if err != nil {
+				return shim.Error(err.Error())
+		   }
+		   err1 = APIstub.PutState(TXKEY, TransactionMTMsBytes)
+		   if err1 != nil {
+			   fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
+			   return shim.Error(err1.Error())
+		   }
+		}
+		recint += 1 
+	}	
+	
+	return shim.Success(nil)
+}	
+
+/*
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "20180928"]}' -C myc 
 peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc
 */
@@ -168,6 +273,7 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 	}	
 	return shim.Success(nil)
 }	
+
 
 /*
 peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK004B00400000000120180415070724","0","BANKCBC"]}' -C myc -v 9.0

@@ -72,7 +72,7 @@ type Cpty struct {
 
 
 type CptyISDA struct {
-	ObjectType           string          `json:"docType"`             //docType is used to distinguish the various types of objects in state database
+	ObjectType           string          `json:"docType"`             //CptyISDA
 	CptyISDAID           string          `json:"CptyISDAID"`          //OwnCptyID + CptyID + TimeNow
 	OwnCptyID            string          `json:"OwnCptyID"`
 	CptyID               string          `json:"CptyID"`              //交易對手
@@ -90,6 +90,17 @@ type CptyISDA struct {
 	USDBondPCT           float64         `json:"USDBondPCT"`          //USDBondPCT
 	TWDBondPCT           float64         `json:"TWDBondPCT"`          //TWDBondPCT
 }
+
+type CptyAsset struct {
+	ObjectType           string          `json:"docType"`             //CptyAsset
+	CptyAssetID          string          `json:"CptyAssetID"`         //OwnCptyID + TimeNow
+	OwnCptyID            string          `json:"OwnCptyID"`
+	USDCash              float64         `json:"USDCash"`             //USDCashPCT
+	TWDCash              float64         `json:"TWDCash"`             //TWDCashPCT
+	USDBond              float64         `json:"USDBond"`             //USDBondPCT
+	TWDBond              float64         `json:"TWDBond"`             //TWDBondPCT
+}
+
 
 type FXTrade struct {
 	ObjectType           string          `json:"docType"`             //docType is used to distinguish the various types of objects in state database
@@ -157,17 +168,10 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.queryCptyISDA(APIstub, args)	
 	} else if function == "queryAllCptyISDA" {
 		return s.queryAllCptyISDA(APIstub, args)
-	//FXTrade
-	//} else if function == "createFXTrade" {
-	//	return s.createFXTrade(APIstub, args)
-	//} else if function == "updateFXTrade" {
-	//	return s.updateFXTrade(APIstub, args)
-	//} else if function == "deleteFXTrade" {
-	//	return s.deleteFXTrade(APIstub, args)
-	//} else if function == "queryFXTrade"  {
-	//	return s.queryFXTrade(APIstub, args)	
-	//} else if function == "queryAllFXTrade" {
-	//	return s.queryAllFXTrade(APIstub, args)	
+	//CptyAsset
+    } else if function == "createCptyAsset" {
+        return s.createCptyAsset(APIstub, args)
+	
 
 	//} else if function == "fetchEURUSDviaOraclize" {
 	//	return s.fetchEURUSDviaOraclize(APIstub)
@@ -180,7 +184,9 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	// Transaction MTM Functions
 	} else if function == "FXTradeMTM" {
 		return s.FXTradeMTM(APIstub, args)	
-
+	// Transaction Settlment Functions
+	} else if function == "FXTradeSettlment" {
+		return s.FXTradeSettlment(APIstub, args)	
 
     } else if function == "queryTables" { 
 		return s.queryTables(APIstub, args)
@@ -214,6 +220,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.queryMTMTransactionStatus(APIstub, args)
 	} else if function == "queryCptyISDAStatus" {
 		return s.queryCptyISDAStatus(APIstub, args)		
+    } else if function == "queryCptyAssetStatus" {
+		return s.queryCptyAssetStatus(APIstub, args)		
 	} else if function == "updateQueuedTransactionHcode" {
 	    return s.updateQueuedTransactionHcode(APIstub, args)
 	 } else if function == "updateHistoryTransactionHcode" {
@@ -814,6 +822,103 @@ func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface,
         	bArrayMemberAlreadyWritten2 = true
 		}
     }
+    buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
+}
+
+/*
+peer chaincode invoke -n mycc -c '{"Args":["createCptyAsset", "0001","45000000","8000000","3000000","500000"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createCptyAsset", "0002","45000000","8000000","3000000","500000"]}' -C myc
+*/
+func (s *SmartContract) createCptyAsset(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	TimeNow := time.Now().Format(timelayout)
+
+	if len(args) != 5 {
+		return shim.Error("Incorrect number of arguments. Expecting 5")
+	}
+
+	var newUSDCash, newTWDCash, newUSDBond, newTWDBond float64
+	var OwnCptyID,CptyAssetID string
+	 
+	OwnCptyID = args[0]
+
+	newUSDCash, err := strconv.ParseFloat(args[1], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newTWDCash, err = strconv.ParseFloat(args[2], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newUSDBond, err = strconv.ParseFloat(args[3], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newTWDBond, err = strconv.ParseFloat(args[4], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	CptyAssetID = OwnCptyID + TimeNow 
+	fmt.Println("createCptyAsset= " +  CptyAssetID + "\n") 
+
+	var CptyAsset = CptyAsset{ObjectType: "CptyAsset", CptyAssetID: CptyAssetID, OwnCptyID: OwnCptyID, USDCash: newUSDCash, TWDCash: newTWDCash, USDBond: newUSDBond, TWDBond: newTWDBond}
+	CptyAssetAsBytes, _ := json.Marshal(CptyAsset)
+	err1 := APIstub.PutState(CptyAsset.CptyAssetID, CptyAssetAsBytes)
+	if err1 != nil {
+		return shim.Error("Failed to create state")
+		fmt.Println("createCptyAsset.PutState\n") 
+	}
+
+	return shim.Success(nil)
+}
+
+//peer chaincode query -n mycc -c '{"Args":["queryCptyAssetStatus","0001"]}' -C myc
+func (s *SmartContract) queryCptyAssetStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	CptyID := args[0]
+	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"CptyAsset\",\"OwnCptyID\":\"%s\"}}", CptyID)	
+
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("esultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
+	bArrayMemberAlreadyWritten := false
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+		}
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+	}
+	
     buffer.WriteString("]")
  
     return shim.Success(buffer.Bytes())
