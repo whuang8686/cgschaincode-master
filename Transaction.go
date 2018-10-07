@@ -69,12 +69,12 @@ type FXTradeMTM struct {
 }
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeSettlment", "2018/12/30"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeSettlment", "20181230"]}' -C myc 
 peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc
 */
 func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 	
-	TimeNow := time.Now().Format(timelayout)
+	//TimeNow := time.Now().Format(timelayout)
 
 	//先前除當日資料
 	if len(args) != 1 {
@@ -92,10 +92,10 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		return shim.Error("Failed to DelState")
 	}
 
-	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/12/01"}}}
+	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"20181201"}}}
 	//queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
 	
-	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":\"%s\",\"TXStatus\":\"Pending\"}}", MaturityDate)
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":\"%s\",\"TXStatus\":\"Matched\"}}", MaturityDate)
 
 	fmt.Println("queryString= " + queryString + "\n") 
 	
@@ -107,7 +107,7 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 	
 	transactionArr := []FXTrade{}
 	var recint int64= 0
-
+    var CptyAssetID string
 
 	for resultsIterator.HasNext() {
 
@@ -121,8 +121,33 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		transaction := FXTrade{}
 		json.Unmarshal(jsonByteObj, &transaction)
 		transactionArr = append(transactionArr, transaction)
-		//fmt.Println("queryResponse.Value.NetPrice= " + strconv.FormatFloat(transactionArr[i].NetPrice, 'f', 4, 64) + "\n") 
-		//計算Spot MTM
+
+		//讀取CptyISDA資料  
+		queryString2 := fmt.Sprintf("{\"selector\": {\"docType\":\"CptyAsset\",\"OwnCptyID\":\"%s\"}}", transactionArr[recint].OwnCptyID)
+        resultsIterator2, err2 := APIstub.GetQueryResult(queryString2)
+    	defer resultsIterator2.Close()
+    	if err2 != nil {
+        	return shim.Error("Failed to GetQueryResult")
+		}
+	    for resultsIterator2.HasNext() {
+			queryResponse2,err2 := resultsIterator2.Next()
+			if err2 != nil {
+				return shim.Error("Failed to Next")
+			}
+			fmt.Println("queryResponse2.Key= " + queryResponse2.Key + "\n") 
+			CptyAssetID = queryResponse2.Key 
+		}	
+		fmt.Println("CptyAssetID= " + CptyAssetID  + "\n") 
+		assetAsBytes, err := APIstub.GetState(CptyAssetID)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		assetTx := CptyAsset{}
+		json.Unmarshal(assetAsBytes, &assetTx)
+		fmt.Println("assetAsBytes.TWD= " + strconv.FormatFloat(assetTx.TWD,'f', 4, 64) + "\n") 
+        fmt.Println("assetAsBytes.OwnCptyID= " + assetTx.OwnCptyID + "\n") 
+
+/*
 		if transactionArr[recint].TXKinds == "SPOT" {
 		   var TXKEY,TXID string
 		   var NetPrice, ClosePrice,MTM float64
@@ -167,6 +192,7 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 			   return shim.Error(err1.Error())
 		   }
 		}
+		*/
 		recint += 1 
 	}	
 	
@@ -510,7 +536,7 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 
 /* FXTrade交易比對
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","SPOT","true"]}' -C myc 
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/31","USD/TWD","USD","1000000","TWD","1000000","30","SPOT","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","30","SPOT","true"]}' -C myc 
 */
 
 func (s *SmartContract) FXTradeTransfer(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {

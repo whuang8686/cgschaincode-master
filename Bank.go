@@ -95,10 +95,29 @@ type CptyAsset struct {
 	ObjectType           string          `json:"docType"`             //CptyAsset
 	CptyAssetID          string          `json:"CptyAssetID"`         //OwnCptyID + TimeNow
 	OwnCptyID            string          `json:"OwnCptyID"`
-	USDCash              float64         `json:"USDCash"`             //USDCashPCT
-	TWDCash              float64         `json:"TWDCash"`             //TWDCashPCT
 	USDBond              float64         `json:"USDBond"`             //USDBondPCT
 	TWDBond              float64         `json:"TWDBond"`             //TWDBondPCT
+	AUD                  float64         `json:"AUD"`                 //AUD 
+	BRL                  float64         `json:"BRL"`                 //BRL
+	CAD                  float64         `json:"CAD"`                 //CAD
+	CHF                  float64         `json:"CHF"`                 //CHF
+	CNY                  float64         `json:"CNY"`                 //CNY
+	EUR                  float64         `json:"EUR"`                 //EUR
+	GBP                  float64         `json:"GBP"`                 //GBP
+	HKD                  float64         `json:"HKD"`                 //HKD
+	INR                  float64         `json:"INR"`                 //INR
+	JPY                  float64         `json:"JPY"`                 //JPY
+	KRW                  float64         `json:"KRW"`                 //KRW
+	MOP                  float64         `json:"MOP"`                 //MOP
+	MYR                  float64         `json:"MYR"`                 //MYR
+	NZD                  float64         `json:"NZD"`                 //NZD
+	PHP                  float64         `json:"PHP"`                 //PHP
+	SEK                  float64         `json:"SEK"`                 //SEK
+	SGD                  float64         `json:"SGD"`                 //SGD
+	THB                  float64         `json:"THB"`                 //THB
+	TWD                  float64         `json:"TWD"`                 //TWD
+	USD                  float64         `json:"USD"`                 //USD
+	ZAR                  float64         `json:"ZAR"`                 //ZAR
 }
 
 
@@ -828,43 +847,120 @@ func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface,
 }
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["createCptyAsset", "0001","45000000","8000000","3000000","500000"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["createCptyAsset", "0002","45000000","8000000","3000000","500000"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createCptyAsset", "0001","45000000","8000000","3000000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createCptyAsset", "0002","45000000","8000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000"]}' -C myc
 */
 func (s *SmartContract) createCptyAsset(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	TimeNow := time.Now().Format(timelayout)
 
-	if len(args) != 5 {
-		return shim.Error("Incorrect number of arguments. Expecting 5")
+	if len(args) != 24 {
+		return shim.Error("Incorrect number of arguments. Expecting 21")
 	}
 
-	var newUSDCash, newTWDCash, newUSDBond, newTWDBond float64
+	var newUSDBond, newTWDBond float64
+	var newAUD,newBRL,newCAD,newCHF,newCNY,newEUR,newGBP,newHKD,newINR,newJPY,newKRW float64
+    var newMOP,newMYR,newNZD,newPHP,newSEK,newSGD,newTHB,newTWD,newUSD,newZAR float64
 	var OwnCptyID,CptyAssetID string
 	 
 	OwnCptyID = args[0]
 
-	newUSDCash, err := strconv.ParseFloat(args[1], 64)
+	newUSDBond, err := strconv.ParseFloat(args[1], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newTWDCash, err = strconv.ParseFloat(args[2], 64)
+	newTWDBond, err = strconv.ParseFloat(args[2], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDBond, err = strconv.ParseFloat(args[3], 64)
+	newAUD, err = strconv.ParseFloat(args[3], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newTWDBond, err = strconv.ParseFloat(args[4], 64)
+	newBRL, err = strconv.ParseFloat(args[4], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-
+	newCAD, err = strconv.ParseFloat(args[5], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newCHF, err = strconv.ParseFloat(args[6], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newCNY, err = strconv.ParseFloat(args[7], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newEUR, err = strconv.ParseFloat(args[8], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newGBP, err = strconv.ParseFloat(args[9], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newHKD, err = strconv.ParseFloat(args[10], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newINR, err = strconv.ParseFloat(args[11], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newJPY, err = strconv.ParseFloat(args[12], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newKRW, err = strconv.ParseFloat(args[13], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newMOP, err = strconv.ParseFloat(args[14], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newMYR, err = strconv.ParseFloat(args[15], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newNZD, err = strconv.ParseFloat(args[16], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newPHP, err = strconv.ParseFloat(args[17], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newSEK, err = strconv.ParseFloat(args[18], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newSGD, err = strconv.ParseFloat(args[19], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newTHB, err = strconv.ParseFloat(args[20], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newTWD, err = strconv.ParseFloat(args[21], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newUSD, err = strconv.ParseFloat(args[22], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newZAR, err = strconv.ParseFloat(args[23], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
 	CptyAssetID = OwnCptyID + TimeNow 
 	fmt.Println("createCptyAsset= " +  CptyAssetID + "\n") 
 
-	var CptyAsset = CptyAsset{ObjectType: "CptyAsset", CptyAssetID: CptyAssetID, OwnCptyID: OwnCptyID, USDCash: newUSDCash, TWDCash: newTWDCash, USDBond: newUSDBond, TWDBond: newTWDBond}
+	var CptyAsset = CptyAsset{ObjectType: "CptyAsset", CptyAssetID: CptyAssetID, OwnCptyID: OwnCptyID, USDBond: newUSDBond, TWDBond: newTWDBond, AUD: newAUD,BRL: newBRL,CAD: newCAD,CHF: newCHF,CNY: newCNY,EUR: newEUR,GBP: newGBP,HKD: newHKD,INR: newINR,JPY: newJPY,KRW: newKRW,MOP: newMOP,MYR: newMYR,NZD: newNZD,PHP: newPHP,SEK: newSEK,SGD: newSGD,THB: newTHB,TWD: newTWD,USD: newUSD,ZAR: newZAR}
 	CptyAssetAsBytes, _ := json.Marshal(CptyAsset)
 	err1 := APIstub.PutState(CptyAsset.CptyAssetID, CptyAssetAsBytes)
 	if err1 != nil {
