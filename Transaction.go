@@ -144,8 +144,148 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		}
 		assetTx := CptyAsset{}
 		json.Unmarshal(assetAsBytes, &assetTx)
-		fmt.Println("assetAsBytes.TWD= " + strconv.FormatFloat(assetTx.TWD,'f', 4, 64) + "\n") 
-        fmt.Println("assetAsBytes.OwnCptyID= " + assetTx.OwnCptyID + "\n") 
+		fmt.Println("assetAsBytes.USD= " + strconv.FormatFloat(assetTx.USD,'f', 4, 64) + "\n") 
+		fmt.Println("assetAsBytes.OwnCptyID= " + assetTx.OwnCptyID + "\n") 
+		
+		if transactionArr[recint].TXType ==  "B" {
+			if transactionArr[recint].Curr1 ==  "AUD" {
+				assetTx.AUD = assetTx.AUD + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "BRL" {
+				assetTx.BRL = assetTx.BRL + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "CAD" {
+				assetTx.CAD = assetTx.CAD + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "CHF" {
+				assetTx.CHF = assetTx.CHF + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "CNY" {
+				assetTx.CNY = assetTx.CNY + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "EUR" {
+				assetTx.EUR = assetTx.EUR + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "GBP" {
+				assetTx.GBP = assetTx.GBP + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "HKD" {
+				assetTx.HKD = assetTx.HKD + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "INR" {
+				assetTx.INR = assetTx.INR + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "JPY" {
+				assetTx.JPY = assetTx.JPY + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "KRW" {
+				assetTx.KRW = assetTx.KRW + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "KRW" {
+				assetTx.KRW = assetTx.KRW + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "MOP" {
+				assetTx.MOP = assetTx.MOP + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "NZD" {
+				assetTx.NZD = assetTx.NZD + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "PHP" {
+				assetTx.PHP = assetTx.PHP + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "SEK" {
+				assetTx.SEK = assetTx.SEK + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "SGD" {
+				assetTx.SGD = assetTx.SGD + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "THB" {
+				assetTx.THB = assetTx.THB + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "TWD" {
+				assetTx.TWD = assetTx.TWD + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "USD" {
+				assetTx.USD = assetTx.USD + transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "ZAR" {
+				assetTx.ZAR = assetTx.ZAR + transactionArr[recint].Amount1
+			}
+		} else  {
+			if transactionArr[recint].Curr1 ==  "AUD" {
+				assetTx.AUD = assetTx.AUD - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "BRL" {
+				assetTx.BRL = assetTx.BRL - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "CAD" {
+				assetTx.CAD = assetTx.CAD - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "CHF" {
+				assetTx.CHF = assetTx.CHF - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "CNY" {
+				assetTx.CNY = assetTx.CNY - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "EUR" {
+				assetTx.EUR = assetTx.EUR - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "GBP" {
+				assetTx.GBP = assetTx.GBP - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "HKD" {
+				assetTx.HKD = assetTx.HKD - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "INR" {
+				assetTx.INR = assetTx.INR - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "JPY" {
+				assetTx.JPY = assetTx.JPY - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "KRW" {
+				assetTx.KRW = assetTx.KRW - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "KRW" {
+				assetTx.KRW = assetTx.KRW - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "MOP" {
+				assetTx.MOP = assetTx.MOP - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "NZD" {
+				assetTx.NZD = assetTx.NZD - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "PHP" {
+				assetTx.PHP = assetTx.PHP - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "SEK" {
+				assetTx.SEK = assetTx.SEK - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "SGD" {
+				assetTx.SGD = assetTx.SGD - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "THB" {
+				assetTx.THB = assetTx.THB - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "TWD" {
+				assetTx.TWD = assetTx.TWD - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "USD" {
+				assetTx.USD = assetTx.USD - transactionArr[recint].Amount1
+			}
+			if transactionArr[recint].Curr1 ==  "ZAR" {
+				assetTx.ZAR = assetTx.ZAR - transactionArr[recint].Amount1
+			}
+		}
+		assetAsBytes, err = json.Marshal(assetTx)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		err = APIstub.PutState(CptyAssetID, assetAsBytes)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		err = updateTransactionStatusbyTXID(APIstub, queryResponse.Key, "Finished")
 
 /*
 		if transactionArr[recint].TXKinds == "SPOT" {
@@ -1023,6 +1163,34 @@ func updateTransactionStatus(APIstub shim.ChaincodeStubInterface, TXID string, T
 	fmt.Printf("3 updateTransactionStatus MatchedTXID = %s\n", MatchedTXID)
 	transaction.MatchedTXID = MatchedTXID
 	fmt.Printf("4 updateTransactionStatus transaction MatchedTXID = %s\n", transaction.MatchedTXID)
+
+	transaction.UpdateTime = TimeNow2
+	transactionAsBytes, err := json.Marshal(transaction)
+	if err != nil {
+		return err
+	}
+	err = APIstub.PutState(TXID, transactionAsBytes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func updateTransactionStatusbyTXID(APIstub shim.ChaincodeStubInterface, TXID string, TXStatus string) error {
+	fmt.Printf("1 updateTransactionStatusbyTXID TXID = %s, TXStatus = %s\n", TXID, TXStatus)
+	TimeNow2 := time.Now().Format(timelayout2)
+	transaction, err := getTransactionStructFromID(APIstub, TXID)
+	transaction.TXStatus = TXStatus
+	var TXMemo, TXErrMsg string
+	TXMemo = ""
+	TXErrMsg = ""
+
+	if TXStatus == "Finished" {
+		TXMemo = ""
+		transaction.TXMemo = TXMemo
+		transaction.TXErrMsg = TXErrMsg
+		transaction.TXStatus = "Finished"
+	}
 
 	transaction.UpdateTime = TimeNow2
 	transactionAsBytes, err := json.Marshal(transaction)
