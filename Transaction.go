@@ -68,6 +68,63 @@ type FXTradeMTM struct {
     MTM          float64       `json:"MTM"`       	
 }
 
+type MTMPrice struct {
+	ObjectType   string        `json:"docType"`        // default set to "MTMPrice"
+	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(YYYYMMDD)
+	AUDHKD       float64       `json:"AUDHKD"`         // AUD/HKD 
+    AUDTWD       float64       `json:"AUDTWD"`         // AUD/TWD
+    AUDUSD       float64       `json:"AUDUSD"`         // AUD/USD
+    CADHKD       float64       `json:"CADHKD"`         // CAD/HKD
+    CADTWD       float64       `json:"CADTWD"`         // CAD/TWD
+    CHFHKD       float64       `json:"CHFHKD"`         // CHF/HKD
+    CHFTWD       float64       `json:"CHFTWD"`         // CHF/TWD
+    CNYHKD       float64       `json:"CNYHKD"`         // CNY/HKD
+    CNYTWD       float64       `json:"CNYTWD"`         // CNY/TWD
+    EURAUD       float64       `json:"EURAUD"`         // EUR/AUD
+    EURCNY       float64       `json:"EURCNY"`         // EUR/CNY
+    EURGBP       float64       `json:"EURGBP"`         // EUR/GBP
+    EURHKD       float64       `json:"EURHKD"`         // EUR/HKD
+    EURJPY       float64       `json:"EURJPY"`         // EUR/JPY
+    EURTWD       float64       `json:"EURTWD"`         // EUR/TWD
+    EURUSD       float64       `json:"EURUSD"`         // EUR/USD
+    EURZAR       float64       `json:"EURZAR"`         // EUR/ZAR
+    GBPHKD       float64       `json:"GBPHKD"`         // GBP/HKD
+    GBPJPY       float64       `json:"GBPJPY"`         // GBP/JPY
+    GBPTWD       float64       `json:"GBPTWD"`         // GBP/TWD
+    GBPUSD       float64       `json:"GBPUSD"`         // GBP/USD
+    HKDJPY       float64       `json:"HKDJPY"`         // HKD/JPY
+    HKDTWD       float64       `json:"HKDTWD"`         // HKD/TWD
+    JPYTWD       float64       `json:"JPYTWD"`         // JPY/TWD
+    MYRHKD       float64       `json:"MYRHKD"`         // MYR/HKD
+    MYRTWD       float64       `json:"MYRTWD"`         // MYR/TWD
+    NZDHKD       float64       `json:"NZDHKD"`         // NZD/HKD
+    NZDTWD       float64       `json:"NZDTWD"`         // NZD/TWD
+    NZDUSD       float64       `json:"NZDUSD"`         // NZD/USD
+    PHPTWD       float64       `json:"PHPTWD"`         // PHP/TWD
+    SEKTWD       float64       `json:"SEKTWD"`         // SEK/TWD
+    SGDHKD       float64       `json:"SGDHKD"`         // SGD/HKD
+    SGDTWD       float64       `json:"SGDTWD"`         // SGD/TWD
+    THBHKD       float64       `json:"THBHKD"`         // THB/HKD
+    USDBRL       float64       `json:"USDBRL"`         // USD/BRL
+    USDCAD       float64       `json:"USDCAD"`         // USD/CAD
+    USDCHF       float64       `json:"USDCHF"`         // USD/CHF
+    USDCNY       float64       `json:"USDCNY"`         // USD/CNY
+    USDHKD       float64       `json:"USDHKD"`         // USD/HKD
+    USDINR       float64       `json:"USDINR"`         // USD/INR
+    USDJPY       float64       `json:"USDJPY"`         // USD/JPY
+    USDKRW       float64       `json:"USDKRW"`         // USD/KRW
+    USDMOP       float64       `json:"USDMOP"`         // USD/MOP
+    USDMYR       float64       `json:"USDMYR"`         // USD/MYR
+    USDPHP       float64       `json:"USDPHP"`         // USD/PHP
+    USDSEK       float64       `json:"USDSEK"`         // USD/SEK
+    USDSGD       float64       `json:"USDSGD"`         // USD/SGD
+    USDTHB       float64       `json:"USDTHB"`         // USD/THB
+    USDTWD       float64       `json:"USDTWD"`         // USD/TWD
+    USDZAR       float64       `json:"USDZAR"`         // USD/ZAR
+    ZARHKD       float64       `json:"ZARHKD"`         // ZAR/HKD
+    ZARTWD       float64       `json:"ZARTWD"`         // ZAR/TWD
+}
+
 /*
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeSettlment", "20181230"]}' -C myc 
 peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc
@@ -284,55 +341,16 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		if err != nil {
 			return shim.Error(err.Error())
 		}
-
+        //更新FXTrade狀態 
 		err = updateTransactionStatusbyTXID(APIstub, queryResponse.Key, "Finished")
 
-/*
-		if transactionArr[recint].TXKinds == "SPOT" {
-		   var TXKEY,TXID string
-		   var NetPrice, ClosePrice,MTM float64
+		//更新QueuedTransaction狀態 
+		err = updateQueuedTransactionStatus(APIstub, SubString(queryResponse.Key, 5, 8) , queryResponse.Key, "Finished") 
+		fmt.Println("updateQueuedTransactionStatus= " + SubString(queryResponse.Key, 5, 8) + "\n") 
 
-		   TXKEY = "MTM" + SubString(TimeNow, 0, 8)
-		   TXID = transactionArr[recint].OwnCptyID + TimeNow + strconv.FormatInt(recint,16)
+		//更新TransactionHistory狀態 
+		err = updateHistoryTransactionStatus(APIstub, "H" + SubString(queryResponse.Key, 5, 8) , queryResponse.Key, "Finished") 		
 
-		   MTMAsBytes, err := APIstub.GetState(TXKEY)
-		   mtmTx := TransactionMTM{}
-		   json.Unmarshal(MTMAsBytes, &mtmTx)
-
-		   mtmTx.ObjectType = MTMTXObjectType
-		   mtmTx.TXKEY = TXKEY
-
-		   transactionMTM := FXTradeMTM{}
-		   transactionMTM.ObjectType = TransactionMTMObjectType
-		   transactionMTM.TXID = TXID
-		   transactionMTM.FXTXID = queryResponse.Key
-		   transactionMTM.TXKinds = transactionArr[recint].TXKinds
-		   transactionMTM.OwnCptyID = transactionArr[recint].OwnCptyID
-		   transactionMTM.CptyID  = transactionArr[recint].CptyID
-           transactionMTM.NetPrice = transactionArr[recint].NetPrice
-		   transactionMTM.ClosePrice = 30.123 //get from API 
-
-		   NetPrice = transactionArr[recint].NetPrice
-		   ClosePrice = 30.123     //get from API
-		   MTM = ClosePrice - NetPrice
-		   transactionMTM.MTM = MTM
-		   mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
-		   mtmTx.Transactions = append(mtmTx.Transactions, transactionMTM)
-
-		   fmt.Println("queryResponse.TXKEY= " + TXKEY + "\n") 
-		   fmt.Println("queryResponse.TXID= " + TXID + "\n") 
-
-		   TransactionMTMsBytes, err1 :=json.Marshal(mtmTx)
-		   if err != nil {
-				return shim.Error(err.Error())
-		   }
-		   err1 = APIstub.PutState(TXKEY, TransactionMTMsBytes)
-		   if err1 != nil {
-			   fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
-			   return shim.Error(err1.Error())
-		   }
-		}
-		*/
 		recint += 1 
 	}	
 	
@@ -340,8 +358,8 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 }	
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "20180928"]}' -C myc 
-peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "20181010"]}' -C myc 
+peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20181010\"}}"]}' -C myc
 */
 func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 	
@@ -2241,7 +2259,7 @@ func updateEndDayHistoryTransactionStatus(APIstub shim.ChaincodeStubInterface, H
 	return nil
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0001B20180903083859"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0001B20181009112451"]}' -C myc
 //peer chaincode query -n mycc -c '{"Args":["queryTXIDTransactions", "0002S20180903060425"]}' -C myc
 //用TXID去查詢FXTrade，回傳一筆   
 func (s *SmartContract) queryTXIDTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
@@ -2262,7 +2280,7 @@ func (s *SmartContract) queryTXIDTransactions(APIstub shim.ChaincodeStubInterfac
 	return shim.Success(NewTXAsBytes)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryTXKEYTransactions", "20180902"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTXKEYTransactions", "2019"]}' -C myc
 //用TXKEY去查詢QueuedTransaction，回傳第一筆
 func (s *SmartContract) queryTXKEYTransactions(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
