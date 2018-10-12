@@ -203,6 +203,12 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	// Transaction MTM Functions
 	} else if function == "FXTradeMTM" {
 		return s.FXTradeMTM(APIstub, args)	
+	} else if function == "CreateFXTradeMTM" {
+		return s.CreateFXTradeMTM(APIstub, args)		
+	} else if function == "deleteFXTradeMTM" {
+		return s.deleteFXTradeMTM(APIstub, args)
+	} else if function == "QueryFXTradeMTM" {
+		return s.QueryFXTradeMTM(APIstub, args)				
 	// Transaction Settlment Functions
 	} else if function == "FXTradeSettlment" {
 		return s.FXTradeSettlment(APIstub, args)	

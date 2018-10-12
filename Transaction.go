@@ -358,32 +358,18 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 }	
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "20181010"]}' -C myc 
-peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20181010\"}}"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["deleteFXTradeMTM", "MTM20181012"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "0001B20181012155013","MTM20181012"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "0002S20181012155025","MTM20181012"]}' -C myc 
+peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20181012\"}}"]}' -C myc
 */
 func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 	
 	TimeNow := time.Now().Format(timelayout)
 
-	//先前除當日資料
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
-	}
-
-	TXKEY := args[0]
-	datadate := "MTM" + args[0] 
-	MaturityDate := TXKEY[0:4] + "/" + TXKEY[4:6] + "/" + TXKEY[6:8]
-	
-	fmt.Println("MaturityDate=",MaturityDate+"\n")
-	// Delete the key from the state in ledger
-	errMsg := APIstub.DelState(datadate)
-	if errMsg != nil {
-		return shim.Error("Failed to DelState")
-	}
-
-	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/12/01"}}}
+	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/10/12"}}}
     //queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
-	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"}}}", MaturityDate)
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"TXID\":\"%s\"}}",  args[0])
 
 	fmt.Println("queryString= " + queryString + "\n") 
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
@@ -394,10 +380,9 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 	transactionArr := []FXTrade{}
 	var recint int64= 0
 
+    for recint = 0; resultsIterator.HasNext(); recint++ {
 
-	for resultsIterator.HasNext() {
-
-        queryResponse,err := resultsIterator.Next()
+		queryResponse,err := resultsIterator.Next()
         if err != nil {
 			return shim.Error("Failed to Next")
 		}
@@ -410,53 +395,188 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		//fmt.Println("queryResponse.Value.NetPrice= " + strconv.FormatFloat(transactionArr[i].NetPrice, 'f', 4, 64) + "\n") 
 		//計算Spot MTM
 		if transactionArr[recint].TXKinds == "SPOT" {
-		   var TXKEY,TXID string
-		   var NetPrice, ClosePrice,MTM float64
 
-		   TXKEY = "MTM" + SubString(TimeNow, 0, 8)
-		   TXID = transactionArr[recint].OwnCptyID + TimeNow + strconv.FormatInt(recint,16)
-
-		   MTMAsBytes, err := APIstub.GetState(TXKEY)
-		   mtmTx := TransactionMTM{}
-		   json.Unmarshal(MTMAsBytes, &mtmTx)
-
-		   mtmTx.ObjectType = MTMTXObjectType
-		   mtmTx.TXKEY = TXKEY
-
-		   transactionMTM := FXTradeMTM{}
-		   transactionMTM.ObjectType = TransactionMTMObjectType
-		   transactionMTM.TXID = TXID
-		   transactionMTM.FXTXID = queryResponse.Key
-		   transactionMTM.TXKinds = transactionArr[recint].TXKinds
-		   transactionMTM.OwnCptyID = transactionArr[recint].OwnCptyID
-		   transactionMTM.CptyID  = transactionArr[recint].CptyID
-           transactionMTM.NetPrice = transactionArr[recint].NetPrice
-		   transactionMTM.ClosePrice = 30.123 //get from API 
-
-		   NetPrice = transactionArr[recint].NetPrice
-		   ClosePrice = 30.123     //get from API
-		   MTM = ClosePrice - NetPrice
-		   transactionMTM.MTM = MTM
-		   mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
-		   mtmTx.Transactions = append(mtmTx.Transactions, transactionMTM)
-
-		   fmt.Println("queryResponse.TXKEY= " + TXKEY + "\n") 
-		   fmt.Println("queryResponse.TXID= " + TXID + "\n") 
-
-		   TransactionMTMsBytes, err1 :=json.Marshal(mtmTx)
-		   if err != nil {
-				return shim.Error(err.Error())
+		   TXKEY := args[1]
+		   TXID := transactionArr[recint].OwnCptyID + TimeNow 
+		   FXTXID :=  queryResponse.Key
+		   TXKinds := transactionArr[recint].TXKinds
+		   OwnCptyID := transactionArr[recint].OwnCptyID
+		   CptyID := transactionArr[recint].CptyID
+		   
+		   NetPrice := strconv.FormatFloat(transactionArr[recint].NetPrice, 'f', 4, 64)
+        
+		   fmt.Println("PutState.TransactionMTMsBytes= " + NetPrice + "\n")
+           
+		   response := s.CreateFXTradeMTM(APIstub, []string{TXKEY, TXID, FXTXID, TXKinds, OwnCptyID, CptyID, NetPrice,strconv.FormatInt(recint, 16)})
+		   // if the transfer failed break out of loop and return error
+		   if response.Status != shim.OK {
+			   return shim.Error("Transfer failed: " + response.Message)
 		   }
-		   err1 = APIstub.PutState(TXKEY, TransactionMTMsBytes)
-		   if err1 != nil {
-			   fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
-			   return shim.Error(err1.Error())
+		   if response.Status == shim.OK {
+			   fmt.Println("response.Status\n")
 		   }
 		}
-		recint += 1 
 	}	
-	return shim.Success(nil)
+	totalrecintString := strconv.FormatInt(recint,16)
+	return shim.Success([]byte(totalrecintString))
 }	
+
+//peer chaincode invoke -n mycc -c '{"Args":["QueryFXTradeMTM", "20181012"]}' -C myc 
+func (s *SmartContract) QueryFXTradeMTM(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
+	
+	TXKEY := args[0]
+	MaturityDate := TXKEY[0:4] + "/" + TXKEY[4:6] + "/" + TXKEY[6:8]
+
+	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/10/12"}}}
+    //queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"}}}", MaturityDate)
+
+	fmt.Println("queryString= " + queryString + "\n") 
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+    defer resultsIterator.Close()
+    if err != nil {
+		fmt.Printf("- getQueryResultForQueryString resultsIterator error")
+        return shim.Error("Failed to GetQueryResult")
+    }
+    // buffer is a JSON array containing QueryRecords
+    var buffer bytes.Buffer
+	buffer.WriteString("[")
+	fmt.Printf("- getQueryResultForQueryString start buffer")
+    bArrayMemberAlreadyWritten := false
+    for resultsIterator.HasNext() {
+        queryResponse,
+        err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error("Failed to Next")
+        }
+        // Add a comma before array members, suppress it for the first array member
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+        }
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+        buffer.WriteString(", \"Record\":")
+        // Record is a JSON object, so we write as-is
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+    }
+	buffer.WriteString("]")
+	
+	return shim.Success(buffer.Bytes())
+}	
+
+func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	TimeNow := time.Now().Format(timelayout)
+	
+	if len(args) < 8 {
+		return shim.Error("Incorrect number of arguments. Expecting 8")
+	}
+
+	TXKEY := args[0] 
+	
+	FXTXID := args[2]
+	TXKinds := args[3]
+	OwnCptyID := args[4]
+	CptyID := args[5]
+	NetPrice, err := strconv.ParseFloat(args[6], 64)
+	if err != nil {
+		fmt.Println("NetPrice must be a numeric string.")
+	} else if NetPrice < 0 {
+		fmt.Println("NetPrice must be a positive value.")
+	}
+
+	TXID := args[4] + TimeNow + args[7]
+
+	fmt.Println("- start CreateFXTradeMTM ", args[7])
+	fmt.Println("- start CreateFXTradeMTM ", TXKEY, TXID, FXTXID, TXKinds, OwnCptyID, CptyID, NetPrice)
+
+	MTMAsBytes, err := APIstub.GetState(TXKEY)
+	if MTMAsBytes == nil {
+		fmt.Println("MTMAsBytes is null ")
+	}else
+	{
+		fmt.Println("MTMAsBytes is not null ")
+	}
+
+	mtmTx := TransactionMTM{}
+	json.Unmarshal(MTMAsBytes, &mtmTx)
+
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	mtmTx.ObjectType = MTMTXObjectType
+	mtmTx.TXKEY = TXKEY
+
+	transactionMTM := FXTradeMTM{}
+	transactionMTM.ObjectType = TransactionMTMObjectType
+	transactionMTM.TXID = TXID
+	transactionMTM.FXTXID = FXTXID
+	transactionMTM.TXKinds = TXKinds
+	transactionMTM.OwnCptyID = OwnCptyID
+	transactionMTM.CptyID  = CptyID
+    transactionMTM.NetPrice = NetPrice
+	transactionMTM.ClosePrice = 30.123 //get from API 
+
+	NetPrice = NetPrice
+	ClosePrice := 30.123     //get from API
+	MTM := ClosePrice - NetPrice
+	transactionMTM.MTM = MTM
+	mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
+	mtmTx.Transactions = append(mtmTx.Transactions, transactionMTM)
+
+	MTMAsBytes, err1 :=json.Marshal(mtmTx)
+	fmt.Println("mtmTx= " + mtmTx.TXKEY  + "\n")
+	fmt.Println("mtmTx= " + TXID + "\n")
+	if err != nil {
+		 return shim.Error(err.Error())
+	}
+	err1 = APIstub.PutState(TXKEY, MTMAsBytes)
+	if err1 != nil {
+		fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
+		return shim.Error(err1.Error())
+	}
+
+	return shim.Success(nil)
+}
+
+
+//peer chaincode invoke -n mycc -c '{"Args":["deleteFXTradeMTM", "MTM20181012"]}' -C myc
+func (s *SmartContract) deleteFXTradeMTM(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	startKey := args[0] 
+	endKey := args[0] + "9999999"
+
+	resultsIterator, err := APIstub.GetStateByRange(startKey, endKey)
+    defer resultsIterator.Close()
+    if err != nil {
+        return shim.Error("Failed to GetQueryResult")
+	}
+	for resultsIterator.HasNext() {
+		queryResponse,err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error("Failed to Next")
+		}
+		fmt.Println("queryResponse.Key= " + queryResponse.Key + "\n") 
+		err = APIstub.DelState(queryResponse.Key)
+		if err != nil {
+			return shim.Error("Failed to delete state")
+		}
+	}
+
+	
+
+	// Delete the key from the state in ledger
+	
+	return shim.Success(nil)
+}
 
 
 /*
