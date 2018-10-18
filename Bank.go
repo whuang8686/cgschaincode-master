@@ -190,7 +190,10 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	//CptyAsset
     } else if function == "createCptyAsset" {
         return s.createCptyAsset(APIstub, args)
-	
+	} else if function == "updateCptyAsset" {
+		return s.updateCptyAsset(APIstub, args)
+    } else if function == "queryTXIDCptyAsset" {
+		return s.queryTXIDCptyAsset(APIstub, args)			
 
 	//} else if function == "fetchEURUSDviaOraclize" {
 	//	return s.fetchEURUSDviaOraclize(APIstub)
@@ -983,6 +986,172 @@ func (s *SmartContract) createCptyAsset(APIstub shim.ChaincodeStubInterface, arg
 	}
 
 	return shim.Success(nil)
+}
+
+//peer chaincode invoke -n mycc -c '{"Args":["updateCptyAsset", "0001","65000000","8800000","3000000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","000120181016114811"]}' -C myc
+func (s *SmartContract) updateCptyAsset(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 25 {
+		return shim.Error("Incorrect number of arguments. Expecting 25")
+	}
+
+
+	// 判斷是否有輸入值 
+	CptyAssetAsBytes, _ := APIstub.GetState(args[24])
+	CptyAsset := CptyAsset{}
+
+	var newUSDBond, newTWDBond float64
+	var newAUD,newBRL,newCAD,newCHF,newCNY,newEUR,newGBP,newHKD,newINR,newJPY,newKRW float64
+    var newMOP,newMYR,newNZD,newPHP,newSEK,newSGD,newTHB,newTWD,newUSD,newZAR float64
+
+
+
+	newUSDBond, err := strconv.ParseFloat(args[1], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newTWDBond, err = strconv.ParseFloat(args[2], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newAUD, err = strconv.ParseFloat(args[3], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newBRL, err = strconv.ParseFloat(args[4], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newCAD, err = strconv.ParseFloat(args[5], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newCHF, err = strconv.ParseFloat(args[6], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newCNY, err = strconv.ParseFloat(args[7], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newEUR, err = strconv.ParseFloat(args[8], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newGBP, err = strconv.ParseFloat(args[9], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newHKD, err = strconv.ParseFloat(args[10], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newINR, err = strconv.ParseFloat(args[11], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newJPY, err = strconv.ParseFloat(args[12], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newKRW, err = strconv.ParseFloat(args[13], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newMOP, err = strconv.ParseFloat(args[14], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newMYR, err = strconv.ParseFloat(args[15], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newNZD, err = strconv.ParseFloat(args[16], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newPHP, err = strconv.ParseFloat(args[17], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newSEK, err = strconv.ParseFloat(args[18], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newSGD, err = strconv.ParseFloat(args[19], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newTHB, err = strconv.ParseFloat(args[20], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newTWD, err = strconv.ParseFloat(args[21], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newUSD, err = strconv.ParseFloat(args[22], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newZAR, err = strconv.ParseFloat(args[23], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	json.Unmarshal(CptyAssetAsBytes, &CptyAsset)
+	CptyAsset.ObjectType = "CptyAsset"
+	CptyAsset.OwnCptyID = args[0]
+
+	CptyAsset.USDBond = newUSDBond
+	CptyAsset.TWDBond = newTWDBond
+	CptyAsset.AUD = newAUD
+	CptyAsset.BRL = newBRL
+	CptyAsset.CAD = newCAD
+	CptyAsset.CHF = newCHF
+	CptyAsset.CNY = newCNY
+	CptyAsset.EUR = newEUR
+	CptyAsset.GBP = newGBP
+	CptyAsset.HKD = newHKD
+	CptyAsset.INR = newINR
+	CptyAsset.JPY = newJPY
+	CptyAsset.KRW = newKRW
+	CptyAsset.MOP = newMOP
+	CptyAsset.MYR = newMYR
+	CptyAsset.NZD = newNZD
+	CptyAsset.PHP = newPHP
+	CptyAsset.SEK = newSEK
+	CptyAsset.SGD = newSGD
+	CptyAsset.THB = newTHB
+	CptyAsset.TWD = newTWD
+	CptyAsset.USD = newUSD
+	CptyAsset.ZAR = newZAR
+	
+	CptyAssetAsBytes, _ = json.Marshal(CptyAsset)
+	err1 := APIstub.PutState(args[24], CptyAssetAsBytes)
+	if err1 != nil {
+		return shim.Error("Failed to change state")
+	}
+
+	return shim.Success(nil)
+}
+
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDCptyAsset", "000120181016114811"]}' -C myc
+func (s *SmartContract) queryTXIDCptyAsset(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	CptyAssetAsBytes, _ := APIstub.GetState(args[0])
+	CptyAsset := CptyAsset{}
+	json.Unmarshal(CptyAssetAsBytes, &CptyAsset)
+
+	CptyAssetAsBytes, err := json.Marshal(CptyAsset)
+	if err != nil {
+		return shim.Error("Failed to query CptyAsset state")
+	}
+
+	return shim.Success(CptyAssetAsBytes)
 }
 
 //peer chaincode query -n mycc -c '{"Args":["queryCptyAssetStatus","0001"]}' -C myc
