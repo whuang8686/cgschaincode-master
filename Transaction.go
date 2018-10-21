@@ -179,7 +179,7 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		json.Unmarshal(jsonByteObj, &transaction)
 		transactionArr = append(transactionArr, transaction)
 
-		//讀取CptyISDA資料  
+		//讀取CptyAsset資料  
 		queryString2 := fmt.Sprintf("{\"selector\": {\"docType\":\"CptyAsset\",\"OwnCptyID\":\"%s\"}}", transactionArr[recint].OwnCptyID)
         resultsIterator2, err2 := APIstub.GetQueryResult(queryString2)
     	defer resultsIterator2.Close()
@@ -394,7 +394,7 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		transactionArr = append(transactionArr, transaction)
 		//fmt.Println("queryResponse.Value.NetPrice= " + strconv.FormatFloat(transactionArr[i].NetPrice, 'f', 4, 64) + "\n") 
 		//計算Spot MTM
-		if transactionArr[recint].TXKinds == "SPOT" {
+		//if transactionArr[recint].TXKinds == "SPOT" {
 
 		   TXKEY := args[1]
 		   TXID := transactionArr[recint].OwnCptyID + TimeNow 
@@ -415,7 +415,7 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		   if response.Status == shim.OK {
 			   fmt.Println("response.Status\n")
 		   }
-		}
+		//}
 	}	
 	totalrecintString := strconv.FormatInt(recint,16)
 	return shim.Success([]byte(totalrecintString))
