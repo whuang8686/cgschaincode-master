@@ -215,9 +215,11 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	// Transaction Settlment Functions
 	} else if function == "FXTradeSettlment" {
 		return s.FXTradeSettlment(APIstub, args)	
-    // Transaction Settlment Functions
+    // Transaction FXTradeCollateral Functions
     } else if function == "FXTradeCollateral" {
 	   return s.FXTradeCollateral(APIstub, args)
+	//} else if function == "CreateFXTradeCollateral" {
+	//	return s.CreateFXTradeCollateral(APIstub, args)	   
     // MTM Price Functions
     } else if function == "createMTMPrice" {
 		return s.createMTMPrice(APIstub, args)
@@ -252,6 +254,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.queryHistoryTransactionStatus(APIstub, args)
 	} else if function == "queryMTMTransactionStatus" {
 		return s.queryMTMTransactionStatus(APIstub, args)
+	} else if function == "queryCollateralTransactionStatus" {
+		return s.queryCollateralTransactionStatus(APIstub, args)		
 	} else if function == "queryCptyISDAStatus" {
 		return s.queryCptyISDAStatus(APIstub, args)		
     } else if function == "queryCptyAssetStatus" {
@@ -1209,6 +1213,7 @@ func (s *SmartContract) queryCptyAssetStatus(APIstub shim.ChaincodeStubInterface
 
 /*
 peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "20181010","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "20181010","5.66483821","22.16558","0.72165","6.01606656","23.53988","8.09178703","31.66183","1.15092601","4.50338","1.60963349","7.92258863","0.89915967","9.1183133","128.95798861","35.67846","1.16158","17.05296905","10.14092782","143.42056599","39.67978","1.29186","14.14274597","3.91284","0.27667","1.9009645","7.43816","5.19614446","20.33166","0.66194","0.57455","3.36756","5.73093663","22.42421","0.23998166","4.05607964","1.304822","0.9701066","6.82050449","7.849896","70.81848862","111.019085","1111.0034704","8.08236185","4.12942799","53.45942236","9.120957","1.3697405","32.71039981","30.71535","14.680789","0.53470532","2.09221"]}' -C myc
 */
 func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
