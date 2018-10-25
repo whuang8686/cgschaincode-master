@@ -43,6 +43,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"net/http"
+	"io/ioutil"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -1215,229 +1217,248 @@ func (s *SmartContract) queryCptyAssetStatus(APIstub shim.ChaincodeStubInterface
 }
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "20181010","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61"]}' -C myc
 peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "20181010","5.66483821","22.16558","0.72165","6.01606656","23.53988","8.09178703","31.66183","1.15092601","4.50338","1.60963349","7.92258863","0.89915967","9.1183133","128.95798861","35.67846","1.16158","17.05296905","10.14092782","143.42056599","39.67978","1.29186","14.14274597","3.91284","0.27667","1.9009645","7.43816","5.19614446","20.33166","0.66194","0.57455","3.36756","5.73093663","22.42421","0.23998166","4.05607964","1.304822","0.9701066","6.82050449","7.849896","70.81848862","111.019085","1111.0034704","8.08236185","4.12942799","53.45942236","9.120957","1.3697405","32.71039981","30.71535","14.680789","0.53470532","2.09221"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "10.232.234.65","20181025"]}' -C myc
 */
 func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+    //peer chaincode query -n mycc -c '{"Args":["getrate","192.168.50.89","20181025"]}' -C myc
+	// http://127.0.0.2:8080/?datadate=20181025&curr1=USD&curr2=TWD
+	
+	CurrencyPair := []string{"AUDHKD","AUDTWD","AUDUSD","CADHKD","CADTWD","CHFHKD","CHFTWD","CNYHKD","CNYTWD","EURAUD","EURCNY","EURGBP","EURHKD","EURJPY","EURTWD","EURUSD","EURZAR","GBPHKD","GBPJPY","GBPTWD","GBPUSD","HKDJPY","HKDTWD","JPYTWD","MYRHKD","MYRTWD","NZDHKD","NZDTWD","NZDUSD","PHPTWD","SEKTWD","SGDHKD","SGDTWD","THBHKD","USDBRL","USDCAD","USDCHF","USDCNY","USDHKD","USDINR","USDJPY","USDKRW","USDMOP","USDMYR","USDPHP","USDSEK","USDSGD","USDTHB","USDTWD","USDZAR","ZARHKD","ZARTWD"}
+    PairMTM := []string{}
+    for i:=0; i < len(CurrencyPair)  ; i++ {
 
-	if len(args) != 53 {
-		return shim.Error("Incorrect number of arguments. Expecting 53")
-	}
+		queryString := "http://" + args[0] + ":8080/?datadate=" + args[1] + "&curr1=" + SubString(CurrencyPair[i],0,3) + "&curr2=" + SubString(CurrencyPair[i],3,6)
+		fmt.Println("getrate.queryString= " + queryString + "\n")
+		resp, err := http.Post(queryString,"application/x-www-form-urlencoded",strings.NewReader(""))
+    	if err != nil {
+        	fmt.Println(err)
+    	}	
 
-	TXKEY := args[0]
+    	defer resp.Body.Close()
+    	body, err := ioutil.ReadAll(resp.Body)
+    	if err != nil {
+        	fmt.Println(err)
+		}
+		fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
+		//PairMTM =  append(PairMTM, strings.Replace(string(body)," ","",-1)) 
+		PairMTM =  append(PairMTM, strings.Replace(strings.Replace(string(body),"\n","",-1)," ","",-1)) 
+	}	
 
+    TXKEY := args[1]
+	
 	var newAUDHKD, newAUDTWD, newAUDUSD, newCADHKD, newCADTWD, newCHFHKD, newCHFTWD, newCNYHKD, newCNYTWD, newEURAUD float64   
-	newAUDHKD, err := strconv.ParseFloat(args[1], 64)
+	newAUDHKD, err := strconv.ParseFloat(PairMTM[0], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newAUDTWD, err = strconv.ParseFloat(args[2], 64)
+	newAUDTWD, err = strconv.ParseFloat(PairMTM[1], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newAUDUSD, err = strconv.ParseFloat(args[3], 64)
+	newAUDUSD, err = strconv.ParseFloat(PairMTM[2], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCADHKD, err = strconv.ParseFloat(args[4], 64)
+	newCADHKD, err = strconv.ParseFloat(PairMTM[3], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCADTWD, err = strconv.ParseFloat(args[5], 64)
+	newCADTWD, err = strconv.ParseFloat(PairMTM[4], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCHFHKD, err = strconv.ParseFloat(args[6], 64)
+	newCHFHKD, err = strconv.ParseFloat(PairMTM[5], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCHFTWD, err = strconv.ParseFloat(args[7], 64)
+	newCHFTWD, err = strconv.ParseFloat(PairMTM[6], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCNYHKD, err = strconv.ParseFloat(args[8], 64)
+	newCNYHKD, err = strconv.ParseFloat(PairMTM[7], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newCNYTWD, err = strconv.ParseFloat(args[9], 64)
+	newCNYTWD, err = strconv.ParseFloat(PairMTM[8], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newEURAUD, err = strconv.ParseFloat(args[10], 64)
+	newEURAUD, err = strconv.ParseFloat(PairMTM[9], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	var newEURCNY, newEURGBP, newEURHKD, newEURJPY, newEURTWD, newEURUSD, newEURZAR, newGBPHKD, newGBPJPY, newGBPTWD float64 
-	newEURCNY, err = strconv.ParseFloat(args[11], 64)
+	newEURCNY, err = strconv.ParseFloat(PairMTM[10], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newEURGBP, err = strconv.ParseFloat(args[12], 64)
+	newEURGBP, err = strconv.ParseFloat(PairMTM[11], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newEURHKD, err = strconv.ParseFloat(args[13], 64)
+	newEURHKD, err = strconv.ParseFloat(PairMTM[12], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newEURJPY, err = strconv.ParseFloat(args[14], 64)
+	newEURJPY, err = strconv.ParseFloat(PairMTM[13], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newEURTWD, err = strconv.ParseFloat(args[15], 64)
+	newEURTWD, err = strconv.ParseFloat(PairMTM[14], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newEURUSD, err = strconv.ParseFloat(args[16], 64)
+	newEURUSD, err = strconv.ParseFloat(PairMTM[15], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newEURZAR, err = strconv.ParseFloat(args[17], 64)
+	newEURZAR, err = strconv.ParseFloat(PairMTM[16], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newGBPHKD, err = strconv.ParseFloat(args[18], 64)
+	newGBPHKD, err = strconv.ParseFloat(PairMTM[17], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newGBPJPY, err = strconv.ParseFloat(args[19], 64)
+	newGBPJPY, err = strconv.ParseFloat(PairMTM[18], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newGBPTWD, err = strconv.ParseFloat(args[20], 64)
+	newGBPTWD, err = strconv.ParseFloat(PairMTM[19], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	var newGBPUSD, newHKDJPY, newHKDTWD, newJPYTWD, newMYRHKD, newMYRTWD, newNZDHKD, newNZDTWD, newNZDUSD, newPHPTWD float64   
-	newGBPUSD, err = strconv.ParseFloat(args[21], 64)
+	newGBPUSD, err = strconv.ParseFloat(PairMTM[20], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newHKDJPY, err = strconv.ParseFloat(args[22], 64)
+	newHKDJPY, err = strconv.ParseFloat(PairMTM[21], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newHKDTWD, err = strconv.ParseFloat(args[23], 64)
+	newHKDTWD, err = strconv.ParseFloat(PairMTM[22], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newJPYTWD, err = strconv.ParseFloat(args[24], 64)
+	newJPYTWD, err = strconv.ParseFloat(PairMTM[23], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newMYRHKD, err = strconv.ParseFloat(args[25], 64)
+	newMYRHKD, err = strconv.ParseFloat(PairMTM[24], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newMYRTWD, err = strconv.ParseFloat(args[26], 64)
+	newMYRTWD, err = strconv.ParseFloat(PairMTM[25], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newNZDHKD, err = strconv.ParseFloat(args[27], 64)
+	newNZDHKD, err = strconv.ParseFloat(PairMTM[26], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newNZDTWD, err = strconv.ParseFloat(args[28], 64)
+	newNZDTWD, err = strconv.ParseFloat(PairMTM[27], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newNZDUSD, err = strconv.ParseFloat(args[29], 64)
+	newNZDUSD, err = strconv.ParseFloat(PairMTM[28], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newPHPTWD, err = strconv.ParseFloat(args[30], 64)
+	newPHPTWD, err = strconv.ParseFloat(PairMTM[29], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	var newSEKTWD, newSGDHKD, newSGDTWD, newTHBHKD, newUSDBRL, newUSDCAD, newUSDCHF, newUSDCNY, newUSDHKD, newUSDINR float64    
-	newSEKTWD, err = strconv.ParseFloat(args[31], 64)
+	newSEKTWD, err = strconv.ParseFloat(PairMTM[30], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newSGDHKD, err = strconv.ParseFloat(args[32], 64)
+	newSGDHKD, err = strconv.ParseFloat(PairMTM[31], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newSGDTWD, err = strconv.ParseFloat(args[33], 64)
+	newSGDTWD, err = strconv.ParseFloat(PairMTM[32], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newTHBHKD, err = strconv.ParseFloat(args[34], 64)
+	newTHBHKD, err = strconv.ParseFloat(PairMTM[33], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDBRL, err = strconv.ParseFloat(args[35], 64)
+	newUSDBRL, err = strconv.ParseFloat(PairMTM[34], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDCAD, err = strconv.ParseFloat(args[36], 64)
+	newUSDCAD, err = strconv.ParseFloat(PairMTM[35], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDCHF, err = strconv.ParseFloat(args[37], 64)
+	newUSDCHF, err = strconv.ParseFloat(PairMTM[36], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDCNY, err = strconv.ParseFloat(args[38], 64)
+	newUSDCNY, err = strconv.ParseFloat(PairMTM[37], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDHKD, err = strconv.ParseFloat(args[39], 64)
+	newUSDHKD, err = strconv.ParseFloat(PairMTM[38], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDINR, err = strconv.ParseFloat(args[40], 64)
+	newUSDINR, err = strconv.ParseFloat(PairMTM[39], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	var newUSDJPY, newUSDKRW, newUSDMOP, newUSDMYR, newUSDPHP, newUSDSEK, newUSDSGD, newUSDTHB, newUSDTWD, newUSDZAR float64    
-	newUSDJPY, err = strconv.ParseFloat(args[41], 64)
+	newUSDJPY, err = strconv.ParseFloat(PairMTM[40], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDKRW, err = strconv.ParseFloat(args[42], 64)
+	newUSDKRW, err = strconv.ParseFloat(PairMTM[41], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDMOP, err = strconv.ParseFloat(args[43], 64)
+	newUSDMOP, err = strconv.ParseFloat(PairMTM[42], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDMYR, err = strconv.ParseFloat(args[44], 64)
+	newUSDMYR, err = strconv.ParseFloat(PairMTM[43], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDPHP, err = strconv.ParseFloat(args[45], 64)
+	newUSDPHP, err = strconv.ParseFloat(PairMTM[44], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDSEK, err = strconv.ParseFloat(args[46], 64)
+	newUSDSEK, err = strconv.ParseFloat(PairMTM[45], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDSGD, err = strconv.ParseFloat(args[47], 64)
+	newUSDSGD, err = strconv.ParseFloat(PairMTM[46], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDTHB, err = strconv.ParseFloat(args[48], 64)
+	newUSDTHB, err = strconv.ParseFloat(PairMTM[47], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDTWD, err = strconv.ParseFloat(args[49], 64)
+	newUSDTWD, err = strconv.ParseFloat(PairMTM[48], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newUSDZAR, err = strconv.ParseFloat(args[50], 64)
+	newUSDZAR, err = strconv.ParseFloat(PairMTM[49], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
     
     var newZARHKD, newZARTWD  float64   
-	newZARHKD, err = strconv.ParseFloat(args[51], 64)
+	newZARHKD, err = strconv.ParseFloat(PairMTM[50], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	newZARTWD, err = strconv.ParseFloat(args[52], 64)
+	newZARTWD, err = strconv.ParseFloat(PairMTM[51], 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -1453,7 +1474,7 @@ func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args
 	return shim.Success(nil)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20181010"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20181025"]}' -C myc
 func (s *SmartContract) queryMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
