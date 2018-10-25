@@ -11,7 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
+	"net/http"
+	"io/ioutil"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
 	//oraclizeapi "github.com/oraclize/fabric-api"
@@ -3428,3 +3429,24 @@ func (s *SmartContract) fetchEURUSDviaOraclize(APIstub shim.ChaincodeStubInterfa
 	return shim.Success(nil)
 } 
 */
+
+//peer chaincode query -n mycc -c '{"Args":["getrate","192.168.50.89","20181025"]}' -C myc
+func (s *SmartContract) getrate(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+	// http://127.0.0.2:8080/?datadate=20181025&curr1=USD&curr2=TWD
+	queryString := "http://" + args[0] + ":8080/?datadate=" + args[1] + "&curr1=USD&curr2=TWD" 
+	fmt.Println("getrate.queryString= " + queryString + "\n")
+	resp, err := http.Post(queryString,
+						   "application/x-www-form-urlencoded",
+						   strings.NewReader(""))
+    if err != nil {
+        fmt.Println(err)
+    }
+
+    defer resp.Body.Close()
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        fmt.Println(err)
+	}
+	fmt.Println("getrate= " + string(body) + "\n")
+    return shim.Success(nil)
+} 

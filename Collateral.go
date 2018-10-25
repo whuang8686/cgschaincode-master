@@ -64,6 +64,7 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 	datadate := "Collateral" + args[1] 
 	var recint int64= 0
 	var recint1 int64= 0
+	var i int64= 0
 	//CollateralDate := TXKEY[0:4] + "/" + TXKEY[4:6] + "/" + TXKEY[6:8]
 	
 	fmt.Println("CollateralDate=",datadate+"\n")
@@ -144,19 +145,15 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 				summtm[CptyID-1] += transaction.Transactions[key].MTM 
 			}
 		}	
-
         recint++
 	}	
-	for i := 0; i < 10 ; i++ {
+	for i = 0; i < 10 ; i++ {
 		fmt.Println("array.ownthreshold= " + strconv.FormatInt(ownthreshold[i] ,10) + "\n")
 		fmt.Println("array.summtm= " + strconv.FormatFloat(summtm[i] ,'f', 4, 64) + "\n")
 
-		
-		//MTM := strconv.FormatFloat(summtm[i] ,'f', 4, 64)
-
 		//queryArgs := [][]byte{[]byte("CreateFXTradeCollateral"), []byte("20181012"), []byte("0001"), []byte("0002")}
 		//peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20181012"]}' -C myc      
-		if strconv.FormatFloat(summtm[i] ,'f', 4, 64) != "" {
+		if summtm[i] > 0  {
 			//response := APIstub.InvokeChaincode("mycc", queryArgs, "myc")
 			//response := s.CreateFXTradeCollateral(APIstub, []string{"20181010","0001","0002"})
 			//if response.Status != shim.OK {
@@ -164,7 +161,11 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 			//	fmt.Printf(errStr)
 			//	return shim.Error(errStr)
 			//} 
-			err = CreateFXTradeCollateral(APIstub, "20181012", "0001","0002")
+			CptyID := fmt.Sprintf("%03d", i+1)
+			if err != nil {
+				return shim.Error("Failed to convert CptyID")
+			}
+			err = CreateFXTradeCollateral(APIstub, TXKEY, strconv.FormatInt(i, 16) , OwnCptyID , CptyID, summtm[i], ownthreshold[i])
 			if err != nil {
 				return shim.Error("Failed to CreateFXTradeCollateral")
 			}
@@ -175,7 +176,7 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 }	
 
 //peer chaincode invoke -n mycc -c '{"Args":["CreateFXTradeCollateral", "20181012","0001","0002"]}' -C myc 
-func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXKEY string, OwnCptyID string, CptyID string) error {
+func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXKEY string, TXID string, OwnCptyID string, CptyID string, MTM float64, OurThreshold int64) error {
 
 	TimeNow := time.Now().Format(timelayout)
 	
@@ -186,14 +187,17 @@ func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXKEY string, 
 	TXKEY = "Collateral" + TXKEY
 	//OwnCptyID := args[1]
 	//CptyID := args[2]
-	TXID := OwnCptyID + TimeNow 
-	fmt.Println("- start CreateFXTradeCollateral ", TXKEY, OwnCptyID, CptyID )
+	TXID = OwnCptyID + TimeNow + TXID
+
+
+	fmt.Println("- start CreateFXTradeCollateral ", TXKEY, OwnCptyID, CptyID, MTM, OurThreshold)
 /*
-	MTM, err := strconv.ParseFloat(args[3], 64)
+
+
+	newMTM, err := strconv.ParseFloat(MTM , 64)
 	if err != nil {
 		fmt.Println("MTM must be a numeric string.")
 	} 
-
 	OurThreshold, err := strconv.ParseFloat(args[4], 64)
 	if err != nil {
 		fmt.Println("OurThreshold must be a numeric string.")
@@ -281,6 +285,7 @@ func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXKEY string, 
 }
 
 
+
 //peer chaincode query -n mycc -c '{"Args":["queryCollateralTransactionStatus","Collateral20181022","0001"]}' -C myc
 func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -315,12 +320,20 @@ func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeS
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TXID\":")
 			buffer.WriteString("\"")
+			buffer.WriteString(collateralTx.Transactions[key].TXID)		
+			buffer.WriteString("\"")
 			buffer.WriteString(", \"OwnCptyID\":")
 			buffer.WriteString("\"")
 			buffer.WriteString(collateralTx.Transactions[key].OwnCptyID)
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"CptyID\":")
 			buffer.WriteString("\"")
+			buffer.WriteString(collateralTx.Transactions[key].CptyID)	
+			buffer.WriteString("\"")
+			buffer.WriteString(", \"MTM\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(strconv.FormatFloat(collateralTx.Transactions[key].MTM,'f', 4, 64))
+			buffer.WriteString("\"")			
 			buffer.WriteString("}")
 			bArrayMemberAlreadyWritten = true
 			doflg = true
