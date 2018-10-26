@@ -552,8 +552,8 @@ func (s *SmartContract) queryAllCpty(APIstub shim.ChaincodeStubInterface, args [
 
 /*
 peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0003","0","0","35000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0002","0","0","25000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0004","0","0","45000000","8000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0002","0","0","25000000","6000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createCptyISDA", "0001","0004","0","0","45000000","7000000","3000000","500000","100000","2018/01/01","2020/12/31","1","0.95","0.96","0.89"]}' -C myc
 */
 func (s *SmartContract) createCptyISDA(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 

@@ -20,19 +20,12 @@ import (
 
 )
 
-const TransactionCollateralObjectType string = "Collateral"
-const CollateralTXObjectType string = "CollateralTX"
+const CollateralTXObjectType string = "Collateral"
 
 type TransactionCollateral struct {
-	ObjectType   string               `json:"docType"`        // default set to "Collateral"
-	TXKEY        string               `json:"TXKEY"`          // 交易日期：TXDATE(MTMYYYYMMDD)
-	TXIDs        []string             `json:"TXIDs"`          // 交易序號資料
-	Transactions []FXTradeCollateral  `json:"Transactions"`   // 當日交易資料
-}
-
-type FXTradeCollateral struct {
-	ObjectType           string        `json:"docType"`             //docType is used to distinguish the various types of objects in state database
-	TXID                 string        `json:"TXID"`                // 交易序號資料 ＝ OwnCptyID + TimeNow
+	ObjectType           string        `json:"docType"`             // default set to "Collateral"
+	TXID                 string        `json:"TXID"`                // 交易序號資料 
+	TXDATE               string        `json:"TXDATE"`              // 交易日期：TXDATE(MTMYYYYMMDD) 
 	OwnCptyID            string        `json:"OwnCptyID"`
 	CptyID               string        `json:"CptyID"`              //交易對手
 	MTM                  float64       `json:"MTM"`       	        //(5)
@@ -45,8 +38,9 @@ type FXTradeCollateral struct {
 	MarginCall           int64         `json:"MarginCall"`          //MarginCall
 }
 
+
 /*
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeCollateral", "20181019","0001"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeCollateral", "20181026","0001"]}' -C myc 
 peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc
 */
 func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
@@ -58,21 +52,13 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 
-	TXKEY := args[0]
+	TXDATE := args[0]
 	OwnCptyID := args[1]
-	//TXID := args[1] + TimeNow 
-	datadate := "Collateral" + args[1] 
+
 	var recint int64= 0
 	var recint1 int64= 0
 	var i int64= 0
-	//CollateralDate := TXKEY[0:4] + "/" + TXKEY[4:6] + "/" + TXKEY[6:8]
-	
-	fmt.Println("CollateralDate=",datadate+"\n")
-	// Delete the key from the state in ledger
-	errMsg := APIstub.DelState(datadate)
-	if errMsg != nil {
-		return shim.Error("Failed to DelState")
-	}
+
     //查詢本行門鑑金額
 	queryString1 := fmt.Sprintf("{\"selector\": {\"docType\":\"CptyISDA\",\"OwnCptyID\":\"%s\"}}", OwnCptyID)
 	fmt.Println("queryString1= " + queryString1 + "\n") 
@@ -107,7 +93,7 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 	fmt.Println("transactionArr[recint].ok= \n")
 
     //取得MTM合計
-	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"MTMTX\",\"TXKEY\":\"%s\"}}", "MTM" + TXKEY)
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"MTMTX\",\"TXKEY\":\"%s\"}}", "MTM" + TXDATE)
 	fmt.Println("queryString= " + queryString + "\n") 
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
     defer resultsIterator.Close()
@@ -153,7 +139,7 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 
 		//queryArgs := [][]byte{[]byte("CreateFXTradeCollateral"), []byte("20181012"), []byte("0001"), []byte("0002")}
 		//peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20181012"]}' -C myc      
-		if summtm[i] > 0  {
+		if summtm[i] != 0  {
 			//response := APIstub.InvokeChaincode("mycc", queryArgs, "myc")
 			//response := s.CreateFXTradeCollateral(APIstub, []string{"20181010","0001","0002"})
 			//if response.Status != shim.OK {
@@ -161,11 +147,11 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 			//	fmt.Printf(errStr)
 			//	return shim.Error(errStr)
 			//} 
-			CptyID := fmt.Sprintf("%03d", i+1)
+			CptyID := fmt.Sprintf("%04d", i+1)
 			if err != nil {
 				return shim.Error("Failed to convert CptyID")
 			}
-			err = CreateFXTradeCollateral(APIstub, TXKEY, strconv.FormatInt(i, 16) , OwnCptyID , CptyID, summtm[i], ownthreshold[i])
+			err = CreateFXTradeCollateral(APIstub, TXDATE, strconv.FormatInt(i, 16) , OwnCptyID , CptyID, summtm[i], ownthreshold[i])
 			if err != nil {
 				return shim.Error("Failed to CreateFXTradeCollateral")
 			}
@@ -175,110 +161,21 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 	return shim.Success(nil)
 }	
 
-//peer chaincode invoke -n mycc -c '{"Args":["CreateFXTradeCollateral", "20181012","0001","0002"]}' -C myc 
-func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXKEY string, TXID string, OwnCptyID string, CptyID string, MTM float64, OurThreshold int64) error {
+//peer chaincode invoke -n mycc -c '{"Args":["CreateFXTradeCollateral", "20181026","0001","0002"]}' -C myc 
+func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXDATE string, TXID string, OwnCptyID string, CptyID string, MTM float64, OurThreshold int64) error {
 
 	TimeNow := time.Now().Format(timelayout)
-	
-	//if len(args) < 3 {
-	//	return shim.Error("Incorrect number of arguments. Expecting 3")
-	//}
 
-	TXKEY = "Collateral" + TXKEY
-	//OwnCptyID := args[1]
-	//CptyID := args[2]
-	TXID = OwnCptyID + TimeNow + TXID
+	TXID = OwnCptyID + CptyID + TimeNow + TXID
 
+	fmt.Println("- start CreateFXTradeCollateral ", TXDATE, TXID, OwnCptyID, CptyID, MTM, OurThreshold)
 
-	fmt.Println("- start CreateFXTradeCollateral ", TXKEY, OwnCptyID, CptyID, MTM, OurThreshold)
-/*
-
-
-	newMTM, err := strconv.ParseFloat(MTM , 64)
-	if err != nil {
-		fmt.Println("MTM must be a numeric string.")
-	} 
-	OurThreshold, err := strconv.ParseFloat(args[4], 64)
-	if err != nil {
-		fmt.Println("OurThreshold must be a numeric string.")
-	} else if OurThreshold < 0 {
-		fmt.Println("OurThreshold must be a positive value.")
-	}
-
-	CreditGuaranteeAmt, err := strconv.ParseFloat(args[5], 64)
-	if err != nil {
-		fmt.Println("CreditGuaranteeAmt must be a numeric string.")
-	} else if CreditGuaranteeAmt < 0 {
-		fmt.Println("CreditGuaranteeAmt must be a positive value.")
-	}
-
-	CreditGuaranteeBal, err := strconv.ParseFloat(args[6], 64)
-	if err != nil {
-		fmt.Println("CreditGuaranteeBal must be a numeric string.")
-	} else if CreditGuaranteeBal < 0 {
-		fmt.Println("CreditGuaranteeBal must be a positive value.")
-	}
-
-	Collateral, err := strconv.ParseFloat(args[7], 64)
-	if err != nil {
-		fmt.Println("Collateral must be a numeric string.")
-	} else if Collateral < 0 {
-		fmt.Println("Collateral must be a positive value.")
-	}
-
-	CptyMTA, err := strconv.ParseFloat(args[8], 64)
-	if err != nil {
-		fmt.Println("CptyMTA must be a numeric string.")
-	} else if CptyMTA < 0 {
-		fmt.Println("CptyMTA must be a positive value.")
-	}
-
-	MarginCall, err := strconv.ParseFloat(args[9], 64)
-	if err != nil {
-		fmt.Println("MarginCall must be a numeric string.")
-	} else if MarginCall < 0 {
-		fmt.Println("MarginCall must be a positive value.")
-	}
-
-	fmt.Println("- start CreateFXTradeCollateral ", TXKEY, TXID, OwnCptyID, CptyID, MTM)
-*/
-    CollateralAsBytes, err := APIstub.GetState(TXKEY)
-	if CollateralAsBytes == nil {
-		fmt.Println("CollateralAsBytes is null ")
-	}else
-	{
-		fmt.Println("CollateralAsBytes is not null ")
-	}
-
-	collateralTx := TransactionCollateral{}
-	json.Unmarshal(CollateralAsBytes, &collateralTx)
-
-	if err != nil {
-		return err
-	}
-	collateralTx.ObjectType = CollateralTXObjectType
-	collateralTx.TXKEY = TXKEY
-
-	transactionCollateral := FXTradeCollateral{}
-	transactionCollateral.ObjectType = TransactionCollateralObjectType
-	transactionCollateral.TXID = TXID
-	transactionCollateral.OwnCptyID = OwnCptyID
-	transactionCollateral.CptyID  = CptyID
-
-	
-	collateralTx.TXIDs = append(collateralTx.TXIDs, TXID)
-	collateralTx.Transactions = append(collateralTx.Transactions, transactionCollateral)
-
-	CollateralAsBytes, err1 :=json.Marshal(collateralTx)
-	fmt.Println("collateralTx= " + collateralTx.TXKEY  + "\n")
-	fmt.Println("collateralTx= " + TXID + "\n")
-	if err != nil {
-		return err
-	}
-	err1 = APIstub.PutState(TXKEY, CollateralAsBytes)
+	var TransactionCollateral = TransactionCollateral{ObjectType: CollateralTXObjectType, TXID: TXID, TXDATE: TXDATE, OwnCptyID: OwnCptyID, CptyID: CptyID, MTM: MTM, OurThreshold: OurThreshold, CreditGuaranteeAmt:0,CreditGuaranteeBal:0,TXKinds:"return",Collateral:0,CptyMTA:0,MarginCall:0}
+	CollateralAsBytes, _ := json.Marshal(TransactionCollateral)
+	err1 := APIstub.PutState(TransactionCollateral.TXID, CollateralAsBytes)
 	if err1 != nil {
-		fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
-		return err
+		return err1
+		fmt.Println("createMTMPrice.PutState\n") 
 	}
 
 	return nil
@@ -286,67 +183,51 @@ func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXKEY string, 
 
 
 
-//peer chaincode query -n mycc -c '{"Args":["queryCollateralTransactionStatus","Collateral20181022","0001"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryCollateralTransactionStatus","20181026","0001"]}' -C myc
 func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
-	CollateralTXKEY := args[0]
-	CptyID := args[1]
+	TXDATE := args[0]
+	//CptyID := args[1]
 
-	CollateralAsBytes, _ := APIstub.GetState(CollateralTXKEY)
-	collateralTx := TransactionCollateral{}
-	json.Unmarshal(CollateralAsBytes, &collateralTx)
-
-	var doflg bool
-	doflg = false
-	var buffer bytes.Buffer
-	buffer.WriteString("[")
-	buffer.WriteString("{\"CollateralTXKEY\":")
-	buffer.WriteString("\"")
-	buffer.WriteString(collateralTx.TXKEY)
-	buffer.WriteString("\"")
-	buffer.WriteString(",\"Transactions\":[")
+	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\"}}", TXDATE)
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)" + queryString + "\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("esultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
 	bArrayMemberAlreadyWritten := false
-	for key, val := range collateralTx.Transactions {
-		if (val.OwnCptyID == CptyID || val.CptyID == CptyID || CptyID == "All") {
-			if bArrayMemberAlreadyWritten == true {
-				buffer.WriteString(",")
-			}
-			buffer.WriteString("{\"CollateralKey\":")
-			buffer.WriteString("\"")
-			buffer.WriteString(strconv.Itoa(key + 1))
-			buffer.WriteString("\"")
-			buffer.WriteString(", \"TXID\":")
-			buffer.WriteString("\"")
-			buffer.WriteString(collateralTx.Transactions[key].TXID)		
-			buffer.WriteString("\"")
-			buffer.WriteString(", \"OwnCptyID\":")
-			buffer.WriteString("\"")
-			buffer.WriteString(collateralTx.Transactions[key].OwnCptyID)
-			buffer.WriteString("\"")
-			buffer.WriteString(", \"CptyID\":")
-			buffer.WriteString("\"")
-			buffer.WriteString(collateralTx.Transactions[key].CptyID)	
-			buffer.WriteString("\"")
-			buffer.WriteString(", \"MTM\":")
-			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(collateralTx.Transactions[key].MTM,'f', 4, 64))
-			buffer.WriteString("\"")			
-			buffer.WriteString("}")
-			bArrayMemberAlreadyWritten = true
-			doflg = true
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
 		}
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+ 
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
 	}
 	buffer.WriteString("]")
-	if doflg != true {
-		//return shim.Error("Failed to find TransactionHistory ")
-		buffer.WriteString(", \"Value\":")
-		buffer.WriteString("Failed to find MTMTransaction")
-	}
-	buffer.WriteString("}]")
-	fmt.Printf("%s", buffer.String())
-
-	return shim.Success(buffer.Bytes())
+ 
+    return shim.Success(buffer.Bytes())
 }
