@@ -1495,12 +1495,173 @@ func queryMTMPriceByContract(APIstub shim.ChaincodeStubInterface, TXDATE string 
 		transaction := MTMPrice{}
 		json.Unmarshal(jsonByteObj, &transaction)
 		transactionArr = append(transactionArr, transaction)
-        if Contract == "USDTWD" {
-			fmt.Printf("resultsIterator.Close:USDTWD")
-          	return transactionArr[0].USDTWD
+		//var newAUDHKD, newAUDTWD, newAUDUSD, newCADHKD, newCADTWD, newCHFHKD, newCHFTWD, newCNYHKD, newCNYTWD, newEURAUD float64   
+        if Contract == "AUDHKD" {
+          	return transactionArr[0].AUDHKD
+		} 
+		if Contract == "AUDTWD" {
+			return transactionArr[0].AUDTWD
+		}
+		if Contract == "USDTWD" {
+			return transactionArr[0].USDTWD
+	    } 
+		if Contract == "AUDUSD" {
+			return transactionArr[0].AUDUSD
+		} 
+		if Contract == "CADHKD" {
+			return transactionArr[0].CADHKD
+		} 
+		if Contract == "CHFHKD" {
+			return transactionArr[0].CHFHKD
+		} 
+		if Contract == "CHFTWD" {
+			return transactionArr[0].CHFTWD
+		} 
+		if Contract == "CNYHKD" {
+			return transactionArr[0].CNYHKD
+		} 
+		if Contract == "CNYTWD" {
+			return transactionArr[0].CNYTWD
+		} 
+		if Contract == "EURAUD" {
+			return transactionArr[0].EURAUD
+		} 
+		//2
+		//var newEURCNY, newEURGBP, newEURHKD, newEURJPY, newEURTWD, newEURUSD, newEURZAR, newGBPHKD, newGBPJPY, newGBPTWD float64 
+	    if Contract == "EURCNY" {
+          	return transactionArr[0].EURCNY
+		} 
+		if Contract == "EURGBP" {
+			return transactionArr[0].EURGBP
+		}
+		if Contract == "EURHKD" {
+			return transactionArr[0].EURHKD
+	    } 
+		if Contract == "EURJPY" {
+			return transactionArr[0].EURJPY
+		} 
+		if Contract == "EURTWD" {
+			return transactionArr[0].EURTWD
+		} 
+		if Contract == "EURUSD" {
+			return transactionArr[0].EURUSD
+		} 
+		if Contract == "EURZAR" {
+			return transactionArr[0].EURZAR
+		} 
+		if Contract == "GBPHKD" {
+			return transactionArr[0].GBPHKD
+		} 
+		if Contract == "GBPJPY" {
+			return transactionArr[0].GBPJPY
+		} 
+		if Contract == "GBPTWD" {
+			return transactionArr[0].GBPTWD
+		} 
+		//3
+		//var newGBPUSD, newHKDJPY, newHKDTWD, newJPYTWD, newMYRHKD, newMYRTWD, newNZDHKD, newNZDTWD, newNZDUSD, newPHPTWD float64   
+        if Contract == "GBPUSD" {
+          	return transactionArr[0].GBPUSD
+		} 
+		if Contract == "HKDJPY" {
+			return transactionArr[0].HKDJPY
+		}
+		if Contract == "HKDTWD" {
+			return transactionArr[0].HKDTWD
+	    } 
+		if Contract == "JPYTWD" {
+			return transactionArr[0].JPYTWD
+		} 
+		if Contract == "MYRHKD" {
+			return transactionArr[0].MYRHKD
+		} 
+		if Contract == "MYRTWD" {
+			return transactionArr[0].MYRTWD
+		} 
+		if Contract == "NZDHKD" {
+			return transactionArr[0].NZDHKD
+		} 
+		if Contract == "NZDTWD" {
+			return transactionArr[0].NZDTWD
+		} 
+		if Contract == "NZDUSD" {
+			return transactionArr[0].NZDUSD
+		} 
+		if Contract == "PHPTWD" {
+			return transactionArr[0].PHPTWD
+		} 
+		//4
+		//var newSEKTWD, newSGDHKD, newSGDTWD, newTHBHKD, newUSDBRL, newUSDCAD, newUSDCHF, newUSDCNY, newUSDHKD, newUSDINR float64    
+        if Contract == "SEKTWD" {
+          	return transactionArr[0].SEKTWD
+		} 
+		if Contract == "SGDHKD" {
+			return transactionArr[0].SGDHKD
+		}
+		if Contract == "SGDTWD" {
+			return transactionArr[0].SGDTWD
+	    } 
+		if Contract == "THBHKD" {
+			return transactionArr[0].THBHKD
+		} 
+		if Contract == "USDBRL" {
+			return transactionArr[0].USDBRL
+		} 
+		if Contract == "USDCAD" {
+			return transactionArr[0].USDCAD
+		} 
+		if Contract == "USDCHF" {
+			return transactionArr[0].USDCHF
+		} 
+		if Contract == "USDCNY" {
+			return transactionArr[0].USDCNY
+		} 
+		if Contract == "USDHKD" {
+			return transactionArr[0].USDHKD
+		} 
+		if Contract == "USDINR" {
+			return transactionArr[0].USDINR
+		} 
+		//5
+		//var newUSDJPY, newUSDKRW, newUSDMOP, newUSDMYR, newUSDPHP, newUSDSEK, newUSDSGD, newUSDTHB, newUSDTWD, newUSDZAR float64    
+        if Contract == "USDJPY" {
+          	return transactionArr[0].USDJPY
+		} 
+		if Contract == "USDKRW" {
+			return transactionArr[0].USDKRW
+		}
+		if Contract == "USDMOP" {
+			return transactionArr[0].USDMOP
+	    } 
+		if Contract == "USDMYR" {
+			return transactionArr[0].USDMYR
+		} 
+		if Contract == "USDPHP" {
+			return transactionArr[0].USDPHP
+		} 
+		if Contract == "USDSEK" {
+			return transactionArr[0].USDSEK
+		} 
+		if Contract == "USDSGD" {
+			return transactionArr[0].USDSGD
+		} 
+		if Contract == "USDTHB" {
+			return transactionArr[0].USDTHB
+		} 
+		if Contract == "USDTWD" {
+			return transactionArr[0].USDTWD
+		} 
+		if Contract == "USDZAR" {
+			return transactionArr[0].USDZAR
+		} 
+
+		if Contract == "ZARHKD" {
+			return transactionArr[0].ZARHKD
+		} 
+		if Contract == "ZARTWD" {
+			return transactionArr[0].ZARTWD
 		} 
 	}
-
     return 0
 }
 
