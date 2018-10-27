@@ -1218,7 +1218,7 @@ func (s *SmartContract) queryCptyAssetStatus(APIstub shim.ChaincodeStubInterface
 
 /*
 peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "20181010","5.66483821","22.16558","0.72165","6.01606656","23.53988","8.09178703","31.66183","1.15092601","4.50338","1.60963349","7.92258863","0.89915967","9.1183133","128.95798861","35.67846","1.16158","17.05296905","10.14092782","143.42056599","39.67978","1.29186","14.14274597","3.91284","0.27667","1.9009645","7.43816","5.19614446","20.33166","0.66194","0.57455","3.36756","5.73093663","22.42421","0.23998166","4.05607964","1.304822","0.9701066","6.82050449","7.849896","70.81848862","111.019085","1111.0034704","8.08236185","4.12942799","53.45942236","9.120957","1.3697405","32.71039981","30.71535","14.680789","0.53470532","2.09221"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "10.232.234.65","20181025"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "172.20.10.13","20181025"]}' -C myc
 */
 func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
     //peer chaincode query -n mycc -c '{"Args":["getrate","192.168.50.89","20181025"]}' -C myc
@@ -1472,6 +1472,36 @@ func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args
 	}
 
 	return shim.Success(nil)
+}
+
+func queryMTMPriceByContract(APIstub shim.ChaincodeStubInterface, TXDATE string , Contract string) (float64) {
+
+	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"MTMPrice\",\"TXKEY\":\"%s\"}}", TXDATE)	
+
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult" + queryString + "\n")
+    if err != nil {
+        return 0
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("resultsIterator.Close")
+    transactionArr := []MTMPrice{}
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return 0
+        }
+		jsonByteObj := queryResponse.Value
+		transaction := MTMPrice{}
+		json.Unmarshal(jsonByteObj, &transaction)
+		transactionArr = append(transactionArr, transaction)
+        if Contract == "USDTWD" {
+			fmt.Printf("resultsIterator.Close:USDTWD")
+          	return transactionArr[0].USDTWD
+		} 
+	}
+
+    return 0
 }
 
 //peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20181025"]}' -C myc

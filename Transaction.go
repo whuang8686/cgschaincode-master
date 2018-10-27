@@ -63,7 +63,8 @@ type FXTradeMTM struct {
 	FXTXID       string        `json:"FXTXID"`         // FXTrade交易序號資料 ＝ OwnCptyID + TXType + TimeNow
 	TXKinds      string        `json:"TXKinds"`        // Spot/FW
 	OwnCptyID    string        `json:"OwnCptyID"`
-	CptyID       string        `json:"CptyID"`         //交易對手
+	CptyID       string        `json:"CptyID"`         // 交易對手
+	Contract     string        `json:"Contract"`       // 交易合約 
 	NetPrice     float64       `json:"NetPrice"`       // 成交價
 	ClosePrice   float64       `json:"ClosePrice"`     // 收盤價
     MTM          float64       `json:"MTM"`       	
@@ -360,8 +361,8 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 
 /*
 peer chaincode invoke -n mycc -c '{"Args":["deleteFXTradeMTM", "MTM20181012"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "0001B20181012155013","MTM20181012"]}' -C myc 
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "0002S20181012155025","MTM20181012"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "0001B20181012155013","20181012"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeMTM", "0002S20181012155025","20181012"]}' -C myc 
 peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20181012\"}}"]}' -C myc
 */
 func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
@@ -401,6 +402,8 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		   TXID := transactionArr[recint].OwnCptyID + TimeNow 
 		   FXTXID :=  queryResponse.Key
 		   TXKinds := transactionArr[recint].TXKinds
+		   Contract  := strings.Replace(transactionArr[recint].Contract,"/","",-1) 
+		   fmt.Println("PutState.TransactionMContractTMsBytes= " + Contract + "\n")
 		   OwnCptyID := transactionArr[recint].OwnCptyID
 		   CptyID := transactionArr[recint].CptyID
 		   
@@ -408,7 +411,7 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
         
 		   fmt.Println("PutState.TransactionMTMsBytes= " + NetPrice + "\n")
            
-		   response := s.CreateFXTradeMTM(APIstub, []string{TXKEY, TXID, FXTXID, TXKinds, OwnCptyID, CptyID, NetPrice,strconv.FormatInt(recint, 16)})
+		   response := s.CreateFXTradeMTM(APIstub, []string{TXKEY, TXID, FXTXID, TXKinds, Contract, OwnCptyID, CptyID, NetPrice,strconv.FormatInt(recint, 16)})
 		   // if the transfer failed break out of loop and return error
 		   if response.Status != shim.OK {
 			   return shim.Error("Transfer failed: " + response.Message)
@@ -473,26 +476,25 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 
 	TimeNow := time.Now().Format(timelayout)
 	
-	if len(args) < 8 {
-		return shim.Error("Incorrect number of arguments. Expecting 8")
+	if len(args) < 9 {
+		return shim.Error("Incorrect number of arguments. Expecting 9")
 	}
 
 	TXKEY := args[0] 
-	
 	FXTXID := args[2]
 	TXKinds := args[3]
-	OwnCptyID := args[4]
-	CptyID := args[5]
-	NetPrice, err := strconv.ParseFloat(args[6], 64)
+	Contract := args[4]
+	OwnCptyID := args[5]
+	CptyID := args[6]
+	NetPrice, err := strconv.ParseFloat(args[7], 64)
 	if err != nil {
 		fmt.Println("NetPrice must be a numeric string.")
 	} else if NetPrice < 0 {
 		fmt.Println("NetPrice must be a positive value.")
 	}
 
-	TXID := args[4] + TimeNow + args[7]
+	TXID := args[5] + TimeNow + args[8]
 
-	fmt.Println("- start CreateFXTradeMTM ", args[7])
 	fmt.Println("- start CreateFXTradeMTM ", TXKEY, TXID, FXTXID, TXKinds, OwnCptyID, CptyID, NetPrice)
 
 	MTMAsBytes, err := APIstub.GetState(TXKEY)
@@ -517,13 +519,15 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	transactionMTM.TXID = TXID
 	transactionMTM.FXTXID = FXTXID
 	transactionMTM.TXKinds = TXKinds
+	transactionMTM.Contract = Contract
 	transactionMTM.OwnCptyID = OwnCptyID
 	transactionMTM.CptyID  = CptyID
-    transactionMTM.NetPrice = NetPrice
-	transactionMTM.ClosePrice = 30.123 //get from API 
-
+	transactionMTM.NetPrice = NetPrice
+	ClosePrice := queryMTMPriceByContract(APIstub, TXKEY,  Contract)
+	transactionMTM.ClosePrice = ClosePrice
+    fmt.Println("ClosePrice= " + strconv.FormatFloat(ClosePrice,'f', 4, 64)   + "\n")
 	NetPrice = NetPrice
-	ClosePrice := 30.123     //get from API
+	
 	MTM := ClosePrice - NetPrice
 	transactionMTM.MTM = MTM
 	mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
@@ -535,7 +539,7 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	if err != nil {
 		 return shim.Error(err.Error())
 	}
-	err1 = APIstub.PutState(TXKEY, MTMAsBytes)
+	err1 = APIstub.PutState("MTM"+TXKEY, MTMAsBytes)
 	if err1 != nil {
 		fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
 		return shim.Error(err1.Error())
