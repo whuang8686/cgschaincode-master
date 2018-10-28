@@ -35,6 +35,12 @@ Navigate to the chaincode-docker-devmode directory of the fabric-samples clone:
 
 `peer chaincode upgrade -n mycc2 -v 1 -c '{"Args":[""]}' -C myc`
 
+##### Terminal 4 - Start the ngix
+`cd go`
+
+`docker-compose -f docker-compose.yml up`
+
+` http://172.20.10.13:8080/?datadate=20181025&curr1=USD&curr2=TWD`
 
 ### Security Chaincode Functions：
 1. querySecurity(APIstub, args)

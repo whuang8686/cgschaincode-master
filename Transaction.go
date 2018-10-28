@@ -406,12 +406,13 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		   fmt.Println("PutState.TransactionMContractTMsBytes= " + Contract + "\n")
 		   OwnCptyID := transactionArr[recint].OwnCptyID
 		   CptyID := transactionArr[recint].CptyID
+		   Amount1 := strconv.FormatFloat(transactionArr[recint].Amount1, 'f', 4, 64)
 		   
 		   NetPrice := strconv.FormatFloat(transactionArr[recint].NetPrice, 'f', 4, 64)
         
 		   fmt.Println("PutState.TransactionMTMsBytes= " + NetPrice + "\n")
            
-		   response := s.CreateFXTradeMTM(APIstub, []string{TXKEY, TXID, FXTXID, TXKinds, Contract, OwnCptyID, CptyID, NetPrice,strconv.FormatInt(recint, 16)})
+		   response := s.CreateFXTradeMTM(APIstub, []string{TXKEY, TXID, FXTXID, TXKinds, Contract, OwnCptyID, CptyID, Amount1, NetPrice, strconv.FormatInt(recint, 16)})
 		   // if the transfer failed break out of loop and return error
 		   if response.Status != shim.OK {
 			   return shim.Error("Transfer failed: " + response.Message)
@@ -486,14 +487,21 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	Contract := args[4]
 	OwnCptyID := args[5]
 	CptyID := args[6]
-	NetPrice, err := strconv.ParseFloat(args[7], 64)
+	Amount1, err := strconv.ParseFloat(args[7], 64)
+	if err != nil {
+		fmt.Println("Amount1 must be a numeric string.")
+	} else if Amount1 < 0 {
+		fmt.Println("Amount1 must be a positive value.")
+	}
+
+	NetPrice, err := strconv.ParseFloat(args[8], 64)
 	if err != nil {
 		fmt.Println("NetPrice must be a numeric string.")
 	} else if NetPrice < 0 {
 		fmt.Println("NetPrice must be a positive value.")
 	}
 
-	TXID := args[5] + TimeNow + args[8]
+	TXID := args[5] + TimeNow + args[9]
 
 	fmt.Println("- start CreateFXTradeMTM ", TXKEY, TXID, FXTXID, TXKinds, OwnCptyID, CptyID, NetPrice)
 
@@ -527,8 +535,13 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	transactionMTM.ClosePrice = ClosePrice
     fmt.Println("ClosePrice= " + strconv.FormatFloat(ClosePrice,'f', 4, 64)   + "\n")
 	NetPrice = NetPrice
+	//Step1 : Amount1 * (收盤Forward Rate - 交易NetPrice) USD/TWD
+	MTM := Amount1 * (ClosePrice - NetPrice)
+	//Step2 : TWD  / (USD/TWD) = USD 
+	fmt.Println("Step2= " + "USD" + SubString(Contract,3,6)   + "\n")
+	//MTM = MTM / queryMTMPriceByContract(APIstub, TXKEY,  "USD" + SubString(Contract,3,6))
 	
-	MTM := ClosePrice - NetPrice
+
 	transactionMTM.MTM = MTM
 	mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
 	mtmTx.Transactions = append(mtmTx.Transactions, transactionMTM)
