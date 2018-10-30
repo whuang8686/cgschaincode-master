@@ -72,7 +72,7 @@ type FXTradeMTM struct {
 
 type MTMPrice struct {
 	ObjectType   string        `json:"docType"`        // default set to "MTMPrice"
-	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(YYYYMMDD)
+	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(MTMPriceYYYYMMDD)
 	AUDHKD       float64       `json:"AUDHKD"`         // AUD/HKD 
     AUDTWD       float64       `json:"AUDTWD"`         // AUD/TWD
     AUDUSD       float64       `json:"AUDUSD"`         // AUD/USD
@@ -110,7 +110,7 @@ type MTMPrice struct {
     USDBRL       float64       `json:"USDBRL"`         // USD/BRL
     USDCAD       float64       `json:"USDCAD"`         // USD/CAD
     USDCHF       float64       `json:"USDCHF"`         // USD/CHF
-    USDCNY       float64       `json:"USDCNY"`         // USD/CNY
+    USDCNH       float64       `json:"USDCNH"`         // USD/CNH
     USDHKD       float64       `json:"USDHKD"`         // USD/HKD
     USDINR       float64       `json:"USDINR"`         // USD/INR
     USDJPY       float64       `json:"USDJPY"`         // USD/JPY
@@ -401,18 +401,20 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 		   TXKEY := args[1]
 		   TXID := transactionArr[recint].OwnCptyID + TimeNow 
 		   FXTXID :=  queryResponse.Key
+		   TXType :=  transactionArr[recint].TXType
 		   TXKinds := transactionArr[recint].TXKinds
 		   Contract  := strings.Replace(transactionArr[recint].Contract,"/","",-1) 
 		   fmt.Println("PutState.TransactionMContractTMsBytes= " + Contract + "\n")
 		   OwnCptyID := transactionArr[recint].OwnCptyID
 		   CptyID := transactionArr[recint].CptyID
 		   Amount1 := strconv.FormatFloat(transactionArr[recint].Amount1, 'f', 4, 64)
+		   Curr2 := transactionArr[recint].Curr2
 		   
-		   NetPrice := strconv.FormatFloat(transactionArr[recint].NetPrice, 'f', 4, 64)
+		   NetPrice := strconv.FormatFloat(transactionArr[recint].NetPrice, 'f', 6, 64)
         
 		   fmt.Println("PutState.TransactionMTMsBytes= " + NetPrice + "\n")
            
-		   response := s.CreateFXTradeMTM(APIstub, []string{TXKEY, TXID, FXTXID, TXKinds, Contract, OwnCptyID, CptyID, Amount1, NetPrice, strconv.FormatInt(recint, 16)})
+		   response := s.CreateFXTradeMTM(APIstub, []string{TXKEY, TXID, FXTXID, TXType, TXKinds, Contract, OwnCptyID, CptyID, Amount1, Curr2, NetPrice, strconv.FormatInt(recint, 16)})
 		   // if the transfer failed break out of loop and return error
 		   if response.Status != shim.OK {
 			   return shim.Error("Transfer failed: " + response.Message)
@@ -483,25 +485,26 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 
 	TXKEY := args[0] 
 	FXTXID := args[2]
-	TXKinds := args[3]
-	Contract := args[4]
-	OwnCptyID := args[5]
-	CptyID := args[6]
-	Amount1, err := strconv.ParseFloat(args[7], 64)
+	TXType := args[3]
+	TXKinds := args[4]
+	Contract := args[5]
+	OwnCptyID := args[6]
+	CptyID := args[7]
+	Amount1, err := strconv.ParseFloat(args[8], 64)
 	if err != nil {
 		fmt.Println("Amount1 must be a numeric string.")
 	} else if Amount1 < 0 {
 		fmt.Println("Amount1 must be a positive value.")
 	}
-
-	NetPrice, err := strconv.ParseFloat(args[8], 64)
+    Curr2 := args[9]
+	NetPrice, err := strconv.ParseFloat(args[10], 64)
 	if err != nil {
 		fmt.Println("NetPrice must be a numeric string.")
 	} else if NetPrice < 0 {
 		fmt.Println("NetPrice must be a positive value.")
 	}
 
-	TXID := args[5] + TimeNow + args[9]
+	TXID := args[5] + TimeNow + args[11]
 
 	fmt.Println("- start CreateFXTradeMTM ", TXKEY, TXID, FXTXID, TXKinds, OwnCptyID, CptyID, NetPrice)
 
@@ -520,7 +523,7 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 		return shim.Error(err.Error())
 	}
 	mtmTx.ObjectType = MTMTXObjectType
-	mtmTx.TXKEY = TXKEY
+	mtmTx.TXKEY = "MTM" + TXKEY 
 
 	transactionMTM := FXTradeMTM{}
 	transactionMTM.ObjectType = TransactionMTMObjectType
@@ -535,13 +538,19 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	transactionMTM.ClosePrice = ClosePrice
     fmt.Println("ClosePrice= " + strconv.FormatFloat(ClosePrice,'f', 4, 64)   + "\n")
 	NetPrice = NetPrice
-	//Step1 : Amount1 * (收盤Forward Rate - 交易NetPrice) USD/TWD
-	MTM := Amount1 * (ClosePrice - NetPrice)
-	//Step2 : TWD  / (USD/TWD) = USD 
-	fmt.Println("Step2= " + "USD" + SubString(Contract,3,6)   + "\n")
-	//MTM = MTM / queryMTMPriceByContract(APIstub, TXKEY,  "USD" + SubString(Contract,3,6))
+	//Step1 : Amount1 * (收盤Forward Rate - 交易NetPrice) USD/TWD OwnCptyID的方向 
+	var MTM float64= 0.00
+	if TXType == "S" {
+		MTM = Amount1 * (NetPrice - ClosePrice)
+	} else if TXType == "B" {
+		MTM = Amount1 * (ClosePrice - NetPrice)
+	}	
 	
-
+	//Step2 : TWD  / (USD/TWD) = USD XXX MTM計算都轉成USD
+	fmt.Println("Step2= " + "USD" + SubString(Contract,3,6)   + "\n")
+	if Curr2 != "USD" {
+		MTM = MTM / queryMTMPriceByContract(APIstub, TXKEY,  "USD" + SubString(Contract,3,6))
+	}
 	transactionMTM.MTM = MTM
 	mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
 	mtmTx.Transactions = append(mtmTx.Transactions, transactionMTM)
@@ -552,7 +561,7 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	if err != nil {
 		 return shim.Error(err.Error())
 	}
-	err1 = APIstub.PutState("MTM"+TXKEY, MTMAsBytes)
+	err1 = APIstub.PutState(TXKEY, MTMAsBytes)
 	if err1 != nil {
 		fmt.Println("PutState.TransactionMTMsBytes= " + err1.Error() + "\n")
 		return shim.Error(err1.Error())
