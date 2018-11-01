@@ -45,6 +45,7 @@ import (
 	"time"
 	"net/http"
 	"io/ioutil"
+	"net"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -1216,20 +1217,43 @@ func (s *SmartContract) queryCptyAssetStatus(APIstub shim.ChaincodeStubInterface
     return shim.Success(buffer.Bytes())
 }
 
+func GetOutboundIP() string {
+	itf, _ := net.InterfaceByName("ens33") //here your interface
+    item, _ := itf.Addrs()
+    var ip net.IP
+    for _, addr := range item {
+        switch v := addr.(type) {
+        case *net.IPNet:
+            if !v.IP.IsLoopback() {
+                if v.IP.To4() != nil {//Verify if IP is IPV4
+                    ip = v.IP
+                }
+            }
+        }
+    }
+    if ip != nil {
+        return ip.String()
+    } else {
+        return ""
+    }
+}
+
 /*
 peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "20181010","5.66483821","22.16558","0.72165","6.01606656","23.53988","8.09178703","31.66183","1.15092601","4.50338","1.60963349","7.92258863","0.89915967","9.1183133","128.95798861","35.67846","1.16158","17.05296905","10.14092782","143.42056599","39.67978","1.29186","14.14274597","3.91284","0.27667","1.9009645","7.43816","5.19614446","20.33166","0.66194","0.57455","3.36756","5.73093663","22.42421","0.23998166","4.05607964","1.304822","0.9701066","6.82050449","7.849896","70.81848862","111.019085","1111.0034704","8.08236185","4.12942799","53.45942236","9.120957","1.3697405","32.71039981","30.71535","14.680789","0.53470532","2.09221"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "192.168.50.89","20181025"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "10.232.227.202","20181025"]}' -C myc
 */
 func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
     //peer chaincode query -n mycc -c '{"Args":["getrate","192.168.50.89","20181025"]}' -C myc
 	// http://127.0.0.2:8080/?datadate=20181025&curr1=USD&curr2=TWD
+	ipaddress := GetOutboundIP()
+	fmt.Println("getrate.GetOutboundIP= " + ipaddress + "\n")
 	
 	CurrencyPair := []string{"AUDHKD","AUDTWD","AUDUSD","CADHKD","CADTWD","CHFHKD","CHFTWD","CNYHKD","CNYTWD","EURAUD","EURCNY","EURGBP","EURHKD","EURJPY","EURTWD","EURUSD","EURZAR","GBPHKD","GBPJPY","GBPTWD","GBPUSD","HKDJPY","HKDTWD","JPYTWD","MYRHKD","MYRTWD","NZDHKD","NZDTWD","NZDUSD","PHPTWD","SEKTWD","SGDHKD","SGDTWD","THBHKD","USDBRL","USDCAD","USDCHF","USDCNH","USDHKD","USDINR","USDJPY","USDKRW","USDMOP","USDMYR","USDPHP","USDSEK","USDSGD","USDTHB","USDTWD","USDZAR","ZARHKD","ZARTWD"}
     PairMTM := []string{}
     for i:=0; i < len(CurrencyPair)  ; i++ {
 
 		queryString := "http://" + args[0] + ":8080/?datadate=" + args[1] + "&curr1=" + SubString(CurrencyPair[i],0,3) + "&curr2=" + SubString(CurrencyPair[i],3,6)
-		fmt.Println("getrate.queryString= " + queryString + "\n")
+		//fmt.Println("getrate.queryString= " + queryString + "\n")
 		resp, err := http.Post(queryString,"application/x-www-form-urlencoded",strings.NewReader(""))
     	if err != nil {
         	fmt.Println(err)
@@ -1240,7 +1264,7 @@ func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args
     	if err != nil {
         	fmt.Println(err)
 		}
-		fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
+		//fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
 		//PairMTM =  append(PairMTM, strings.Replace(string(body)," ","",-1)) 
 		PairMTM =  append(PairMTM, strings.Replace(strings.Replace(string(body),"\n","",-1)," ","",-1)) 
 	}	

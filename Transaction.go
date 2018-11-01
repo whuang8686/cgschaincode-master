@@ -51,10 +51,10 @@ type TransactionHistory struct {
 }
 
 type TransactionMTM struct {
-	ObjectType   string        `json:"docType"`        // default set to "MTM"
-	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(MTMYYYYMMDD)
-	TXIDs        []string      `json:"TXIDs"`          // 交易序號資料
-	Transactions []FXTradeMTM  `json:"Transactions"`   // 當日交易資料
+	ObjectType      string        `json:"docType"`           // default set to "MTM"
+	TXKEY           string        `json:"TXKEY"`             // 交易日期：TXDATE(MTMYYYYMMDD)
+	TXIDs           []string      `json:"TXIDs"`             // 交易序號資料
+	TransactionsMTM []FXTradeMTM  `json:"TransactionsMTM"`   // 當日交易MTM資料
 }
 
 type FXTradeMTM struct {
@@ -483,7 +483,7 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 		return shim.Error("Incorrect number of arguments. Expecting 9")
 	}
 
-	TXKEY := args[0] 
+	TXKEY := "MTM" + args[0] 
 	FXTXID := args[2]
 	TXType := args[3]
 	TXKinds := args[4]
@@ -504,10 +504,10 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 		fmt.Println("NetPrice must be a positive value.")
 	}
 
-	TXID := args[5] + TimeNow + args[11]
+	TXID := args[6] + TimeNow + args[11]
 
 	fmt.Println("- start CreateFXTradeMTM ", TXKEY, TXID, FXTXID, TXKinds, OwnCptyID, CptyID, NetPrice)
-
+	
 	MTMAsBytes, err := APIstub.GetState(TXKEY)
 	if MTMAsBytes == nil {
 		fmt.Println("MTMAsBytes is null ")
@@ -522,11 +522,11 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	mtmTx.ObjectType = MTMTXObjectType
-	mtmTx.TXKEY = "MTM" + TXKEY 
+	mtmTx.ObjectType = TransactionMTMObjectType
+	mtmTx.TXKEY = TXKEY
 
 	transactionMTM := FXTradeMTM{}
-	transactionMTM.ObjectType = TransactionMTMObjectType
+	transactionMTM.ObjectType = MTMTXObjectType
 	transactionMTM.TXID = TXID
 	transactionMTM.FXTXID = FXTXID
 	transactionMTM.TXKinds = TXKinds
@@ -534,7 +534,7 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	transactionMTM.OwnCptyID = OwnCptyID
 	transactionMTM.CptyID  = CptyID
 	transactionMTM.NetPrice = NetPrice
-	ClosePrice := queryMTMPriceByContract(APIstub, TXKEY,  Contract)
+	ClosePrice := queryMTMPriceByContract(APIstub, args[0] ,  Contract)
 	transactionMTM.ClosePrice = ClosePrice
     fmt.Println("ClosePrice= " + strconv.FormatFloat(ClosePrice,'f', 4, 64)   + "\n")
 	NetPrice = NetPrice
@@ -549,11 +549,11 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 	//Step2 : TWD  / (USD/TWD) = USD XXX MTM計算都轉成USD
 	fmt.Println("Step2= " + "USD" + SubString(Contract,3,6)   + "\n")
 	if Curr2 != "USD" {
-		MTM = MTM / queryMTMPriceByContract(APIstub, TXKEY,  "USD" + SubString(Contract,3,6))
+		MTM = MTM / queryMTMPriceByContract(APIstub, args[0] ,  "USD" + SubString(Contract,3,6))
 	}
 	transactionMTM.MTM = MTM
 	mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
-	mtmTx.Transactions = append(mtmTx.Transactions, transactionMTM)
+	mtmTx.TransactionsMTM = append(mtmTx.TransactionsMTM, transactionMTM)
 
 	MTMAsBytes, err1 :=json.Marshal(mtmTx)
 	fmt.Println("mtmTx= " + mtmTx.TXKEY  + "\n")
@@ -3028,6 +3028,10 @@ func (s *SmartContract) queryQueuedTransactionStatus(APIstub shim.ChaincodeStubI
 			buffer.WriteString("\"")
 			buffer.WriteString(QueuedTX.Transactions[key].TXType)
 			buffer.WriteString("\"")
+			buffer.WriteString(", \"TXKinds\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(QueuedTX.Transactions[key].TXKinds)
+			buffer.WriteString("\"")
 			buffer.WriteString(", \"OwnCptyID\":")
 			buffer.WriteString("\"")
 			buffer.WriteString(QueuedTX.Transactions[key].OwnCptyID)
@@ -3270,7 +3274,7 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
 	buffer.WriteString("\"")
 	buffer.WriteString(",\"Transactions\":[")
 	bArrayMemberAlreadyWritten := false
-	for key, val := range MTMTX.Transactions {
+	for key, val := range MTMTX.TransactionsMTM {
 		if (val.OwnCptyID == CptyID || val.CptyID == CptyID || CptyID == "All") {
 			if bArrayMemberAlreadyWritten == true {
 				buffer.WriteString(",")
@@ -3281,35 +3285,35 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TXID\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(MTMTX.Transactions[key].TXID)
+			buffer.WriteString(MTMTX.TransactionsMTM[key].TXID)
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"FXTXID\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(MTMTX.Transactions[key].FXTXID)
+			buffer.WriteString(MTMTX.TransactionsMTM[key].FXTXID)
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"TXKinds\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(MTMTX.Transactions[key].TXKinds)
+			buffer.WriteString(MTMTX.TransactionsMTM[key].TXKinds)
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"OwnCptyID\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(MTMTX.Transactions[key].OwnCptyID)
+			buffer.WriteString(MTMTX.TransactionsMTM[key].OwnCptyID)
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"CptyID\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(MTMTX.Transactions[key].CptyID)
+			buffer.WriteString(MTMTX.TransactionsMTM[key].CptyID)
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"NetPrice\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(MTMTX.Transactions[key].NetPrice,'f', 4, 64))
+			buffer.WriteString(strconv.FormatFloat(MTMTX.TransactionsMTM[key].NetPrice,'f', 6, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"ClosePrice\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(MTMTX.Transactions[key].ClosePrice,'f', 4, 64))
+			buffer.WriteString(strconv.FormatFloat(MTMTX.TransactionsMTM[key].ClosePrice,'f', 6, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"MTM\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(strconv.FormatFloat(MTMTX.Transactions[key].MTM,'f', 4, 64))
+			buffer.WriteString(strconv.FormatFloat(MTMTX.TransactionsMTM[key].MTM,'f', 4, 64))
 			buffer.WriteString("\"")
 			buffer.WriteString("}")
 			bArrayMemberAlreadyWritten = true

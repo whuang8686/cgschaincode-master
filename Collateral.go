@@ -118,17 +118,17 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 		json.Unmarshal(jsonByteObj, &transaction)
 		transactionArr = append(transactionArr, transaction)
 
-		for key := range transaction.Transactions {
-			fmt.Println("transactionArr[recint].val.OwnCptyID= " + transaction.Transactions[key].OwnCptyID  + "\n")
-			fmt.Println("transactionArr[recint].val.CptyID= " + strings.Replace(transaction.Transactions[key].CptyID,"0","",-1) + "\n")		
-			fmt.Println("transactionArr[recint].val.MTM= " + strconv.FormatFloat(transaction.Transactions[key].MTM ,'f', 4, 64) + "\n")
-			CptyID, err := strconv.ParseInt(strings.Replace(transaction.Transactions[key].CptyID,"0","",-1) ,10, 64)
+		for key := range transaction.TransactionsMTM {
+			fmt.Println("transactionArr[recint].val.OwnCptyID= " + transaction.TransactionsMTM[key].OwnCptyID  + "\n")
+			fmt.Println("transactionArr[recint].val.CptyID= " + strings.Replace(transaction.TransactionsMTM[key].CptyID,"0","",-1) + "\n")		
+			fmt.Println("transactionArr[recint].val.MTM= " + strconv.FormatFloat(transaction.TransactionsMTM[key].MTM ,'f', 4, 64) + "\n")
+			CptyID, err := strconv.ParseInt(strings.Replace(transaction.TransactionsMTM[key].CptyID,"0","",-1) ,10, 64)
    			if err != nil {
 				return shim.Error("Failed to strconv.Atoi")
    			}
 			fmt.Println("transactionArr[recint].val.CptyID= " + strconv.FormatInt(CptyID-1,16) + "\n")
-			if transaction.Transactions[key].OwnCptyID == OwnCptyID {
-				summtm[CptyID-1] += transaction.Transactions[key].MTM 
+			if transaction.TransactionsMTM[key].OwnCptyID == OwnCptyID {
+				summtm[CptyID-1] += transaction.TransactionsMTM[key].MTM 
 			}
 		}	
         recint++
