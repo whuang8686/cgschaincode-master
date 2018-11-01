@@ -67,7 +67,8 @@ type FXTradeMTM struct {
 	Contract     string        `json:"Contract"`       // 交易合約 
 	NetPrice     float64       `json:"NetPrice"`       // 成交價
 	ClosePrice   float64       `json:"ClosePrice"`     // 收盤價
-    MTM          float64       `json:"MTM"`       	
+	MTM          float64       `json:"MTM"`       	
+	CreateTime   string        `json:"createTime"`     //建立時間
 }
 
 type MTMPrice struct {
@@ -478,6 +479,7 @@ func (s *SmartContract) QueryFXTradeMTM(APIstub shim.ChaincodeStubInterface,args
 func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	TimeNow := time.Now().Format(timelayout)
+	TimeNow2 := time.Now().Format(timelayout2)
 	
 	if len(args) < 9 {
 		return shim.Error("Incorrect number of arguments. Expecting 9")
@@ -552,6 +554,7 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 		MTM = MTM / queryMTMPriceByContract(APIstub, args[0] ,  "USD" + SubString(Contract,3,6))
 	}
 	transactionMTM.MTM = MTM
+	transactionMTM.CreateTime = TimeNow2
 	mtmTx.TXIDs = append(mtmTx.TXIDs, TXID)
 	mtmTx.TransactionsMTM = append(mtmTx.TransactionsMTM, transactionMTM)
 
@@ -3315,6 +3318,10 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
 			buffer.WriteString("\"")
 			buffer.WriteString(strconv.FormatFloat(MTMTX.TransactionsMTM[key].MTM,'f', 4, 64))
 			buffer.WriteString("\"")
+			buffer.WriteString(", \"CreateTime\":")
+			buffer.WriteString("\"")
+			buffer.WriteString(HistoryTX.Transactions[key].CreateTime)
+			buffer.WriteString("\"")			
 			buffer.WriteString("}")
 			bArrayMemberAlreadyWritten = true
 			doflg = true
