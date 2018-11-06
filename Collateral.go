@@ -11,7 +11,7 @@ import (
 	//"errors"
 	"fmt"
 	"strconv"
-	
+	"math"
 	"strings"
 	"time"
 
@@ -21,6 +21,7 @@ import (
 )
 
 const CollateralTXObjectType string = "Collateral"
+
 
 type TransactionCollateral struct {
 	ObjectType           string        `json:"docType"`             // default set to "Collateral"
@@ -36,6 +37,7 @@ type TransactionCollateral struct {
 	Collateral           int64         `json:"Collateral"`          //Collateral (8)=(6)-(7)
 	CptyMTA              int64         `json:"CptyMTA"`             //交易對手最低轉讓金額
 	MarginCall           int64         `json:"MarginCall"`          //MarginCall
+	CreateTime           string        `json:"createTime"`          //建立時間
 }
 
 
@@ -58,11 +60,15 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 	var recint int64= 0
 	var recint1 int64= 0
 	var i int64= 0
+	var MarginCall float64=0
+	var TXKinds string
 
     //查詢本行門鑑金額
 	queryString1 := fmt.Sprintf("{\"selector\": {\"docType\":\"CptyISDA\",\"OwnCptyID\":\"%s\"}}", OwnCptyID)
 	fmt.Println("queryString1= " + queryString1 + "\n") 
 	ownthreshold := [10]int64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	cptymta := [10]int64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	rounding := [10]int64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	resultsIterator1, err := APIstub.GetQueryResult(queryString1)
 	defer resultsIterator1.Close()
     if err != nil {
@@ -87,13 +93,16 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 		}
 		fmt.Println("transactionArr[recint].val.CptyID= " + strings.Replace(transactionArr1[recint1].CptyID,"0","",-1) + "\n")		
 			
-		ownthreshold[CptyID-1] += transactionArr1[recint1].OwnThreshold
+		ownthreshold[CptyID-1] = transactionArr1[recint1].OwnThreshold
+		cptymta[CptyID-1] = transactionArr1[recint1].CptyMTA
+		rounding[CptyID-1] += transactionArr1[recint1].Rounding
+
 		recint1++
 	}
 	fmt.Println("transactionArr[recint].ok= \n")
 
     //取得MTM合計
-	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"MTMTX\",\"TXKEY\":\"%s\"}}", "MTM" + TXDATE)
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"MTM\",\"TXKEY\":\"%s\"}}", "MTM" + TXDATE)
 	fmt.Println("queryString= " + queryString + "\n") 
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
     defer resultsIterator.Close()
@@ -151,7 +160,28 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 			if err != nil {
 				return shim.Error("Failed to convert CptyID")
 			}
-			err = CreateFXTradeCollateral(APIstub, TXDATE, strconv.FormatInt(i, 16) , OwnCptyID , CptyID, summtm[i], ownthreshold[i])
+			//計算CreditGuaranteeAmt信用擔保金額=MTM-OwnThreshold本行之門檻金額
+			CreditGuaranteeAmt := summtm[i]  - float64(ownthreshold[i])
+			//計算信用擔保餘額CreditGuaranteeBal by 前一天
+			CreditGuaranteeBal := float64(0)
+			//計算TXKinds （1)信用擔保金額 > 信用擔保餘額 = Cpty交付 (2)信用擔保金額 < 信用擔保餘額 = Cpty返還
+			if (CreditGuaranteeAmt > CreditGuaranteeBal) {
+				TXKinds = "交付"
+			} else {
+                TXKinds = "返還"
+			}
+            //計算Collateral = 信用擔保金額 - 信用擔保餘額
+			Collateral := CreditGuaranteeAmt - CreditGuaranteeBal
+			//計算MarginCall ＝ Collateral > CptyMTA，取整數計算(Cpty交付金額Rounding進位，我付款Rounding捨去)
+            if (Collateral > float64(cptymta[i])) {
+				if TXKinds == "交付" {
+					MarginCall = math.Ceil(Collateral / float64(rounding[i])) * float64(rounding[i])
+				} else{
+					MarginCall = math.Floor(Collateral / float64(rounding[i])) * float64(rounding[i])
+				}
+			}
+
+			err = CreateFXTradeCollateral(APIstub, TXDATE, strconv.FormatInt(i, 16) , OwnCptyID , CptyID, summtm[i], ownthreshold[i], int64(CreditGuaranteeAmt), int64(CreditGuaranteeBal), TXKinds, int64(Collateral), int64(cptymta[i]), int64(MarginCall))
 			if err != nil {
 				return shim.Error("Failed to CreateFXTradeCollateral")
 			}
@@ -162,15 +192,16 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 }	
 
 //peer chaincode invoke -n mycc -c '{"Args":["CreateFXTradeCollateral", "20181026","0001","0002"]}' -C myc 
-func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXDATE string, TXID string, OwnCptyID string, CptyID string, MTM float64, OurThreshold int64) error {
+func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXDATE string, TXID string, OwnCptyID string, CptyID string, MTM float64, OurThreshold int64, CreditGuaranteeAmt int64,CreditGuaranteeBal int64,TXKinds string ,Collateral int64,CptyMTA int64, MarginCall int64)  error {
 
 	TimeNow := time.Now().Format(timelayout)
+	TimeNow2 := time.Now().Format(timelayout2)
 
 	TXID = OwnCptyID + CptyID + TimeNow + TXID
 
 	fmt.Println("- start CreateFXTradeCollateral ", TXDATE, TXID, OwnCptyID, CptyID, MTM, OurThreshold)
 
-	var TransactionCollateral = TransactionCollateral{ObjectType: CollateralTXObjectType, TXID: TXID, TXDATE: TXDATE, OwnCptyID: OwnCptyID, CptyID: CptyID, MTM: MTM, OurThreshold: OurThreshold, CreditGuaranteeAmt:0,CreditGuaranteeBal:0,TXKinds:"return",Collateral:0,CptyMTA:0,MarginCall:0}
+	var TransactionCollateral = TransactionCollateral{ObjectType: CollateralTXObjectType, TXID: TXID, TXDATE: TXDATE, OwnCptyID: OwnCptyID, CptyID: CptyID, MTM: MTM, OurThreshold: OurThreshold, CreditGuaranteeAmt:CreditGuaranteeAmt,CreditGuaranteeBal:CreditGuaranteeBal ,TXKinds:TXKinds,Collateral:Collateral ,CptyMTA:CptyMTA,MarginCall:MarginCall,CreateTime:TimeNow2}
 	CollateralAsBytes, _ := json.Marshal(TransactionCollateral)
 	err1 := APIstub.PutState(TransactionCollateral.TXID, CollateralAsBytes)
 	if err1 != nil {

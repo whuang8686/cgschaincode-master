@@ -271,7 +271,6 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 			if transactionArr[recint].Curr1 ==  "ZAR" {
 				assetTx.ZAR = assetTx.ZAR + transactionArr[recint].Amount1
 			}
-		} else  {
 			if transactionArr[recint].Curr1 ==  "AUD" {
 				assetTx.AUD = assetTx.AUD - transactionArr[recint].Amount1
 			}
@@ -3320,7 +3319,7 @@ func (s *SmartContract) queryMTMTransactionStatus(APIstub shim.ChaincodeStubInte
 			buffer.WriteString("\"")
 			buffer.WriteString(", \"CreateTime\":")
 			buffer.WriteString("\"")
-			buffer.WriteString(HistoryTX.Transactions[key].CreateTime)
+			buffer.WriteString(MTMTX.TransactionsMTM[key].CreateTime)
 			buffer.WriteString("\"")			
 			buffer.WriteString("}")
 			bArrayMemberAlreadyWritten = true
