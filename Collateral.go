@@ -166,15 +166,15 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 			CreditGuaranteeBal := float64(0)
 			//計算TXKinds （1)信用擔保金額 > 信用擔保餘額 = Cpty交付 (2)信用擔保金額 < 信用擔保餘額 = Cpty返還
 			if (CreditGuaranteeAmt > CreditGuaranteeBal) {
-				TXKinds = "交付"
+				TXKinds = "交易對手交付"
 			} else {
-                TXKinds = "返還"
+                TXKinds = "返還交易對手"
 			}
             //計算Collateral = 信用擔保金額 - 信用擔保餘額
 			Collateral := CreditGuaranteeAmt - CreditGuaranteeBal
 			//計算MarginCall ＝ Collateral > CptyMTA，取整數計算(Cpty交付金額Rounding進位，我付款Rounding捨去)
-            if (Collateral > float64(cptymta[i])) {
-				if TXKinds == "交付" {
+            if (math.Abs(Collateral) > float64(cptymta[i])) {
+				if TXKinds == "交易對手交付" {
 					MarginCall = math.Ceil(Collateral / float64(rounding[i])) * float64(rounding[i])
 				} else{
 					MarginCall = math.Floor(Collateral / float64(rounding[i])) * float64(rounding[i])
