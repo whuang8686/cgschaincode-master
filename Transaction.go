@@ -128,6 +128,21 @@ type MTMPrice struct {
     ZARTWD       float64       `json:"ZARTWD"`         // ZAR/TWD
 }
 
+type BondPrice struct {
+	ObjectType    string        `json:"docType"`        // default set to "BondPrice"
+	TXKEY         string        `json:"TXKEY"`          // 交易日期：TXDATE(BondPriceYYYYMMDD)
+	A03108        float64       `json:"A03108"`         // A03108
+	A07110        float64       `json:"A07110"`         // A07110
+	A00104        float64       `json:"A00104"`         // A00104
+	A03107        float64       `json:"A03107"`         // A03107
+	A03114        float64       `json:"A03114"`         // A03114
+	US46625HJZ47  float64       `json:"US46625HJZ47"`   // US46625HJZ47
+	US71647NAM11  float64       `json:"US71647NAM11"`   // US71647NAM11
+	XS11335850562 float64       `json:"XS11335850562"`  // XS11335850562
+	US25152RXA66  float64       `json:"US25152RXA66"`   // US25152RXA66
+	BBG00FYBLQH5  float64       `json:"BBG00FYBLQH5"`   // BBG00FYBLQH5
+}
+
 /*
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeSettlment", "20181230"]}' -C myc 
 peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc

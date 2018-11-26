@@ -262,3 +262,24 @@ func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeS
  
     return shim.Success(buffer.Bytes())
 }
+
+
+//peer chaincode query -n mycc -c '{"Args":["queryTXIDCollateral", "0001000220181124020917"]}' -C myc
+//用TXID去查詢Collateral，回傳一筆   
+func (s *SmartContract) queryTXIDCollateral(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	NewTXAsBytes, _ := APIstub.GetState(args[0])
+	NewTX := TransactionCollateral{}
+	json.Unmarshal(NewTXAsBytes, &NewTX)
+
+	NewTXAsBytes, err := json.Marshal(NewTX)
+	if err != nil {
+		return shim.Error("Failed to query NewTX state")
+	}
+
+	return shim.Success(NewTXAsBytes)
+}

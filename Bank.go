@@ -188,6 +188,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.deleteCptyISDA(APIstub, args)
 	} else if function == "queryCptyISDA"  {
 		return s.queryCptyISDA(APIstub, args)	
+	} else if function == "queryCptyISDAByCpty"  {
+		return s.queryCptyISDAByCpty(APIstub, args)			
 	} else if function == "queryAllCptyISDA" {
 		return s.queryAllCptyISDA(APIstub, args)
 	//CptyAsset
@@ -229,11 +231,15 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
     // MTM Price Functions
     } else if function == "createMTMPrice" {
 		return s.createMTMPrice(APIstub, args)
+	} else if function == "createBondPrice" {
+		return s.createBondPrice(APIstub, args)
 
     } else if function == "queryTables" { 
 		return s.queryTables(APIstub, args)
 	} else if function == "queryTXIDTransactions" {
 		return s.queryTXIDTransactions(APIstub, args)	
+	} else if function == "queryTXIDCollateral" {
+		return s.queryTXIDCollateral(APIstub, args)			
 	} else if function == "queryTXKEYTransactions" {
 	    return s.queryTXKEYTransactions(APIstub, args)
 	} else if function == "queryHistoryTXKEYTransactions" {
@@ -268,6 +274,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.queryCptyAssetStatus(APIstub, args)	
 	} else if function == "queryMTMPrice" {
 		return s.queryMTMPrice(APIstub, args)		
+	} else if function == "queryBondPrice" {
+		return s.queryBondPrice(APIstub, args)			
 	} else if function == "updateQueuedTransactionHcode" {
 	    return s.updateQueuedTransactionHcode(APIstub, args)
 	 } else if function == "updateHistoryTransactionHcode" {
@@ -873,6 +881,56 @@ func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface,
     return shim.Success(buffer.Bytes())
 }
 
+//peer chaincode query -n mycc -c '{"Args":["queryCptyISDAByCpty","0001","0004"]}' -C myc
+func (s *SmartContract) queryCptyISDAByCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+	var queryString string
+	OwnCptyID := args[0]
+	CptyID := args[1]
+
+	queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"CptyISDA\",\"OwnCptyID\":\"%s\",\"CptyID\":\"%s\"}}", OwnCptyID, CptyID)
+	
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("esultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
+	bArrayMemberAlreadyWritten := false
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+		}
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+	}
+    buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
+}
+
 /*
 peer chaincode invoke -n mycc -c '{"Args":["createCptyAsset", "0001","45000000","8000000","3000000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000","500000"]}' -C myc
 peer chaincode invoke -n mycc -c '{"Args":["createCptyAsset", "0002","45000000","8000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000","6000000"]}' -C myc
@@ -1239,11 +1297,9 @@ func GetOutboundIP() string {
 }
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "20181010","5.66483821","22.16558","0.72165","6.01606656","23.53988","8.09178703","31.66183","1.15092601","4.50338","1.60963349","7.92258863","0.89915967","9.1183133","128.95798861","35.67846","1.16158","17.05296905","10.14092782","143.42056599","39.67978","1.29186","14.14274597","3.91284","0.27667","1.9009645","7.43816","5.19614446","20.33166","0.66194","0.57455","3.36756","5.73093663","22.42421","0.23998166","4.05607964","1.304822","0.9701066","6.82050449","7.849896","70.81848862","111.019085","1111.0034704","8.08236185","4.12942799","53.45942236","9.120957","1.3697405","32.71039981","30.71535","14.680789","0.53470532","2.09221"]}' -C myc
-peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "10.232.227.202","20181025"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "192.168.50.191","20181126"]}' -C myc
 */
 func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
-    //peer chaincode query -n mycc -c '{"Args":["getrate","192.168.50.89","20181025"]}' -C myc
 	// http://127.0.0.2:8080/?datadate=20181025&curr1=USD&curr2=TWD
 	ipaddress := GetOutboundIP()
 	fmt.Println("getrate.GetOutboundIP= " + ipaddress + "\n")
@@ -1498,6 +1554,112 @@ func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args
 	return shim.Success(nil)
 }
 
+
+/*
+peer chaincode invoke -n mycc -c '{"Args":["createBondPrice", "192.168.50.191","20181126"]}' -C myc
+*/
+func (s *SmartContract) createBondPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+	// http://192.168.0.28:8080/?datadate=20181121&TWDBOND=A03108
+	ipaddress := GetOutboundIP()
+	fmt.Println("getrate.GetOutboundIP= " + ipaddress + "\n")
+	
+	TWDBond := []string{"A03108","A07110","A00104","A03107","A03114"}
+	USDBond := []string{"US46625HJZ47","US71647NAM11","XS11335850562","US25152RXA66","BBG00FYBLQH5"}
+	BondMTM := []string{}
+    for i:=0; i < len(TWDBond)  ; i++ {
+
+		queryString := "http://" + args[0] + ":8080/?datadate=" + args[1] + "&TWDBOND=" + TWDBond[i]
+		//fmt.Println("getrate.queryString= " + queryString + "\n")
+		resp, err := http.Post(queryString,"application/x-www-form-urlencoded",strings.NewReader(""))
+    	if err != nil {
+        	fmt.Println(err)
+    	}	
+
+    	defer resp.Body.Close()
+    	body, err := ioutil.ReadAll(resp.Body)
+    	if err != nil {
+        	fmt.Println(err)
+		}
+		//fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
+		//PairMTM =  append(PairMTM, strings.Replace(string(body)," ","",-1)) 
+		BondMTM =  append(BondMTM, strings.Replace(strings.Replace(string(body),"\n","",-1)," ","",-1)) 
+	}	
+	for i:=0; i < len(USDBond)  ; i++ {
+
+		queryString := "http://" + args[0] + ":8080/?datadate=" + args[1] + "&USDBOND=" + USDBond[i]
+		//fmt.Println("getrate.queryString= " + queryString + "\n")
+		resp, err := http.Post(queryString,"application/x-www-form-urlencoded",strings.NewReader(""))
+    	if err != nil {
+        	fmt.Println(err)
+    	}	
+
+    	defer resp.Body.Close()
+    	body, err := ioutil.ReadAll(resp.Body)
+    	if err != nil {
+        	fmt.Println(err)
+		}
+		//fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
+		//PairMTM =  append(PairMTM, strings.Replace(string(body)," ","",-1)) 
+		BondMTM =  append(BondMTM, strings.Replace(strings.Replace(string(body),"\n","",-1)," ","",-1)) 
+	}	
+
+    TXKEY := "BondPrice" + args[1]
+	
+	var newA03108, newA07110, newA00104, newA03107, newA03114 float64   
+	newA03108, err := strconv.ParseFloat(BondMTM[0], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newA07110, err = strconv.ParseFloat(BondMTM[1], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newA00104, err = strconv.ParseFloat(BondMTM[2], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newA03107, err = strconv.ParseFloat(BondMTM[3], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newA03114, err = strconv.ParseFloat(BondMTM[4], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	
+	var newUS46625HJZ47, newUS71647NAM11, newXS11335850562, newUS25152RXA66, newBBG00FYBLQH5 float64   
+	newUS46625HJZ47, err = strconv.ParseFloat(BondMTM[5], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newUS71647NAM11, err = strconv.ParseFloat(BondMTM[6], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newXS11335850562, err = strconv.ParseFloat(BondMTM[7], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newUS25152RXA66, err = strconv.ParseFloat(BondMTM[8], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newBBG00FYBLQH5, err = strconv.ParseFloat(BondMTM[9], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	                            
+	var BondPrice = BondPrice{ObjectType: "BondPrice", TXKEY: TXKEY, A03108: newA03108,A07110: newA07110,A00104: newA00104,A03107: newA03107,A03114: newA03114,US46625HJZ47: newUS46625HJZ47,US71647NAM11: newUS71647NAM11,XS11335850562: newXS11335850562,US25152RXA66: newUS25152RXA66,BBG00FYBLQH5: newBBG00FYBLQH5}
+	BondPriceAsBytes, _ := json.Marshal(BondPrice)
+	err1 := APIstub.PutState(BondPrice.TXKEY, BondPriceAsBytes)
+	if err1 != nil {
+		return shim.Error("Failed to create state")
+		fmt.Println("createBondPrice.PutState\n") 
+	}
+
+	return shim.Success(nil)
+}
+
 func queryMTMPriceByContract(APIstub shim.ChaincodeStubInterface, TXDATE string , Contract string) (float64) {
 
 	TXKEY := "MTMPrice" + TXDATE 
@@ -1690,7 +1852,7 @@ func queryMTMPriceByContract(APIstub shim.ChaincodeStubInterface, TXDATE string 
     return 0
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20181025"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20181126"]}' -C myc
 func (s *SmartContract) queryMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
@@ -1701,6 +1863,19 @@ func (s *SmartContract) queryMTMPrice(APIstub shim.ChaincodeStubInterface, args 
 	MTMPriceAsBytes, _ := APIstub.GetState(TXKEY)
 	return shim.Success(MTMPriceAsBytes)
 }
+
+//peer chaincode query -n mycc -c '{"Args":["queryBondPrice","20181126"]}' -C myc
+func (s *SmartContract) queryBondPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	TXKEY := "BondPrice" + args[0]
+	BondPriceAsBytes, _ := APIstub.GetState(TXKEY)
+	return shim.Success(BondPriceAsBytes)
+}
+
 
 // The main function is only relevant in unit test mode. Only included here for completeness.
 func main() {
