@@ -226,8 +226,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
     // Transaction FXTradeCollateral Functions
     } else if function == "FXTradeCollateral" {
 	   return s.FXTradeCollateral(APIstub, args)
-	//} else if function == "CreateFXTradeCollateral" {
-	//	return s.CreateFXTradeCollateral(APIstub, args)	   
+	} else if function == "CreateCollateralDetail" {
+		return s.CreateCollateralDetail(APIstub, args)	   
     // MTM Price Functions
     } else if function == "createMTMPrice" {
 		return s.createMTMPrice(APIstub, args)
@@ -268,6 +268,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.queryMTMTransactionStatus(APIstub, args)
 	} else if function == "queryCollateralTransactionStatus" {
 		return s.queryCollateralTransactionStatus(APIstub, args)		
+	} else if function == "queryCollateralDetailStatus" {
+		return s.queryCollateralDetailStatus(APIstub, args)				
 	} else if function == "queryCptyISDAStatus" {
 		return s.queryCptyISDAStatus(APIstub, args)		
     } else if function == "queryCptyAssetStatus" {

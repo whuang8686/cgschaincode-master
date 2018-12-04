@@ -26,18 +26,34 @@ const CollateralTXObjectType string = "Collateral"
 type TransactionCollateral struct {
 	ObjectType           string        `json:"docType"`             // default set to "Collateral"
 	TXID                 string        `json:"TXID"`                // 交易序號資料 
-	TXDATE               string        `json:"TXDATE"`              // 交易日期：TXDATE(MTMYYYYMMDD) 
+	TXDATE               string        `json:"TXDATE"`              // 交易日期：TXDATE(YYYYMMDD) 
 	OwnCptyID            string        `json:"OwnCptyID"`
-	CptyID               string        `json:"CptyID"`              //交易對手
-	MTM                  float64       `json:"MTM"`       	        //(5)
-	OurThreshold         int64         `json:"OwnThreshold"`        //本行門鑑金額 (4)
-	CreditGuaranteeAmt   int64         `json:"CreditGuaranteeAmt"`  //信用擔保金額 (6)=(5)-(4)
-	CreditGuaranteeBal   int64         `json:"CreditGuaranteeBal"`  //信用擔保餘額 (7)
-	TXKinds              string        `json:"TXKinds"`             //返還/交付
-	Collateral           int64         `json:"Collateral"`          //Collateral (8)=(6)-(7)
-	CptyMTA              int64         `json:"CptyMTA"`             //交易對手最低轉讓金額
-	MarginCall           int64         `json:"MarginCall"`          //MarginCall
-	CreateTime           string        `json:"createTime"`          //建立時間
+	CptyID               string        `json:"CptyID"`              // 交易對手
+	MTM                  float64       `json:"MTM"`       	        // (5)
+	OurThreshold         int64         `json:"OwnThreshold"`        // 本行門鑑金額 (4)
+	CreditGuaranteeAmt   int64         `json:"CreditGuaranteeAmt"`  // 信用擔保金額 (6)=(5)-(4)
+	CreditGuaranteeBal   int64         `json:"CreditGuaranteeBal"`  // 信用擔保餘額 (7)
+	TXKinds              string        `json:"TXKinds"`             // 返還/交付
+	Collateral           int64         `json:"Collateral"`          // Collateral (8)=(6)-(7)
+	CptyMTA              int64         `json:"CptyMTA"`             // 交易對手最低轉讓金額
+	MarginCall           int64         `json:"MarginCall"`          // MarginCall
+	CreateTime           string        `json:"createTime"`          // 建立時間
+}
+
+type CollateralDetail struct {
+	ObjectType           string        `json:"docType"`             // default set to "CollateralDetail"
+	TXID                 string        `json:"TXID"`                // 交易序號資料 
+	TXDATE               string        `json:"TXDATE"`              // 交易日期：TXDATE(YYYMMDD) 
+	OwnCptyID            string        `json:"OwnCptyID"`
+	CptyID               string        `json:"CptyID"`              // 交易對手
+	Curr                 string        `json:"Curr"`                // 幣別
+	CollateralType       string        `json:"CollateralType"`      // 擔保品種類 Bond,Cash
+	CollateralDetail     string        `json:"CollateralDetail"`    // Bond放債券代碼,Cash放幣別
+	Amount               float64       `json:"Amount"`       	    // 擔保品金額
+	Discount             float64       `json:"Discount"`       	    // 折扣率
+	DiscountAmount       float64       `json:"DiscountAmount"`      // 折扣後金額
+	FXTXID               string        `json:"FXTXID"`              // 交易序號資料 TransactionCollateral
+	CreateTime           string        `json:"createTime"`          // 建立時間
 }
 
 
@@ -196,7 +212,7 @@ func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXDATE string,
 
 	TimeNow := time.Now().Format(timelayout)
 	TimeNow2 := time.Now().Format(timelayout2)
-
+   
 	TXID = OwnCptyID + CptyID + TimeNow + TXID
 
 	fmt.Println("- start CreateFXTradeCollateral ", TXDATE, TXID, OwnCptyID, CptyID, MTM, OurThreshold)
@@ -206,12 +222,48 @@ func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXDATE string,
 	err1 := APIstub.PutState(TransactionCollateral.TXID, CollateralAsBytes)
 	if err1 != nil {
 		return err1
-		fmt.Println("createMTMPrice.PutState\n") 
+		fmt.Println("CreateFXTradeCollateral.PutState\n") 
 	}
 
 	return nil
 }
 
+
+//peer chaincode invoke -n mycc -c '{"Args":["CreateCollateralDetail", "20181026","0001","0002","TWD","Bond","A03108","10000","0.98","980","00010002201812041256341"]}' -C myc 
+func (s *SmartContract) CreateCollateralDetail(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	TimeNow := time.Now().Format(timelayout)
+	TimeNow2 := time.Now().Format(timelayout2)
+
+	if len(args) != 10 {
+		return shim.Error("Incorrect number of arguments. Expecting 3")
+	}
+	var newAmount, newDiscount, newDiscountAmount float64
+	var TXID = args[1] + args[2] + TimeNow 
+
+	newAmount, err := strconv.ParseFloat(args[6], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newDiscount, err = strconv.ParseFloat(args[7], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	newDiscountAmount, err = strconv.ParseFloat(args[8], 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	var CollateralDetail = CollateralDetail{ObjectType: "CollateralDetail", TXID: TXID, TXDATE: args[0], OwnCptyID: args[1], CptyID: args[2], Curr: args[3], CollateralType: args[4], CollateralDetail: args[5], Amount:newAmount,Discount:newDiscount ,DiscountAmount:newDiscountAmount ,FXTXID:args[9] ,CreateTime:TimeNow2}
+	CollateralDetailAsBytes, _ := json.Marshal(CollateralDetail)
+	err1 := APIstub.PutState(CollateralDetail.TXID, CollateralDetailAsBytes)
+	if err1 != nil {
+		return shim.Error("Failed to create state")
+		fmt.Println("CreateCollateralDetail.PutState\n") 
+	}
+
+	return shim.Success(nil)
+}
 
 
 //peer chaincode query -n mycc -c '{"Args":["queryCollateralTransactionStatus","20181026","0001"]}' -C myc
@@ -220,17 +272,23 @@ func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeS
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
+	var queryString string
 	TXDATE := args[0]
-	//CptyID := args[1]
+	CptyID := args[1]
 
-	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\"}}", TXDATE)
+	if CptyID == "All" {		
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\"}}", TXDATE)
+	} else {	
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\",\"OwnCptyID\":\"%s\"}}", TXDATE, CptyID)
+	}
+	 	
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
 	fmt.Printf("APIstub.GetQueryResult(queryString)" + queryString + "\n")
     if err != nil {
         return shim.Error(err.Error())
     }
 	defer resultsIterator.Close()
-	fmt.Printf("esultsIterator.Close")
+	fmt.Printf("resultsIterator.Close")
  
     var buffer bytes.Buffer
     buffer.WriteString("[")
@@ -263,6 +321,60 @@ func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeS
     return shim.Success(buffer.Bytes())
 }
 
+//peer chaincode query -n mycc -c '{"Args":["queryCollateralDetailStatus","20181026","0001"]}' -C myc
+func (s *SmartContract) queryCollateralDetailStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+	var queryString string
+
+	TXDATE := args[0]
+	CptyID := args[1]
+
+	if CptyID == "All" {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"CollateralDetail\",\"TXDATE\":\"%s\"}}", TXDATE)
+	}  else {	
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"CollateralDetail\",\"TXDATE\":\"%s\",\"OwnCptyID\":\"%s\"}}", TXDATE, CptyID)
+	}
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)" + queryString + "\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("resultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
+	bArrayMemberAlreadyWritten := false
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+		}
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+ 
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
+}
 
 //peer chaincode query -n mycc -c '{"Args":["queryTXIDCollateral", "0001000220181124020917"]}' -C myc
 //用TXID去查詢Collateral，回傳一筆   
