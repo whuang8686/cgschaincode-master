@@ -236,7 +236,7 @@ func (s *SmartContract) CreateCollateralDetail(APIstub shim.ChaincodeStubInterfa
 	TimeNow2 := time.Now().Format(timelayout2)
 
 	if len(args) != 10 {
-		return shim.Error("Incorrect number of arguments. Expecting 3")
+		return shim.Error("Incorrect number of arguments. Expecting 10")
 	}
 	var newAmount, newDiscount, newDiscountAmount float64
 	var TXID = args[1] + args[2] + TimeNow 
