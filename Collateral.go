@@ -37,6 +37,7 @@ type TransactionCollateral struct {
 	Collateral           int64         `json:"Collateral"`          // Collateral (8)=(6)-(7)
 	CptyMTA              int64         `json:"CptyMTA"`             // 交易對手最低轉讓金額
 	MarginCall           int64         `json:"MarginCall"`          // MarginCall
+	TXStatus             string        `json:"TXStatus"`            // Pending, Finished, Suspended
 	CreateTime           string        `json:"createTime"`          // 建立時間
 }
 
@@ -214,10 +215,10 @@ func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXDATE string,
 	TimeNow2 := time.Now().Format(timelayout2)
    
 	TXID = OwnCptyID + CptyID + TimeNow + TXID
-
+	TXStatus := "Pending"
 	fmt.Println("- start CreateFXTradeCollateral ", TXDATE, TXID, OwnCptyID, CptyID, MTM, OurThreshold)
 
-	var TransactionCollateral = TransactionCollateral{ObjectType: CollateralTXObjectType, TXID: TXID, TXDATE: TXDATE, OwnCptyID: OwnCptyID, CptyID: CptyID, MTM: MTM, OurThreshold: OurThreshold, CreditGuaranteeAmt:CreditGuaranteeAmt,CreditGuaranteeBal:CreditGuaranteeBal ,TXKinds:TXKinds,Collateral:Collateral ,CptyMTA:CptyMTA,MarginCall:MarginCall,CreateTime:TimeNow2}
+	var TransactionCollateral = TransactionCollateral{ObjectType: CollateralTXObjectType, TXID: TXID, TXDATE: TXDATE, OwnCptyID: OwnCptyID, CptyID: CptyID, MTM: MTM, OurThreshold: OurThreshold, CreditGuaranteeAmt:CreditGuaranteeAmt,CreditGuaranteeBal:CreditGuaranteeBal ,TXKinds:TXKinds ,Collateral:Collateral ,CptyMTA:CptyMTA ,MarginCall:MarginCall ,TXStatus:TXStatus ,CreateTime:TimeNow2}
 	CollateralAsBytes, _ := json.Marshal(TransactionCollateral)
 	err1 := APIstub.PutState(TransactionCollateral.TXID, CollateralAsBytes)
 	if err1 != nil {
@@ -226,6 +227,28 @@ func CreateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, TXDATE string,
 	}
 
 	return nil
+}
+
+//peer chaincode invoke -n mycc -c '{"Args":["UpdateFXTradeCollateral", "00010005201812061156064","Finished"]}' -C myc 
+func (s *SmartContract) UpdateFXTradeCollateral(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	TransactionCollateralAsBytes, _ := APIstub.GetState(args[0])
+	TransactionCollateral := TransactionCollateral{}
+
+	json.Unmarshal(TransactionCollateralAsBytes, &TransactionCollateral)
+	TransactionCollateral.TXStatus = args[1]
+	
+	TransactionCollateralAsBytes, _ = json.Marshal(TransactionCollateral)
+	err := APIstub.PutState(args[0], TransactionCollateralAsBytes)
+	if err != nil {
+		return shim.Error("Failed to change state")
+	}
+
+	return shim.Success(nil)
 }
 
 

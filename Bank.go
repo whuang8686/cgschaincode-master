@@ -225,7 +225,9 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.FXTradeSettlment(APIstub, args)	
     // Transaction FXTradeCollateral Functions
     } else if function == "FXTradeCollateral" {
-	   return s.FXTradeCollateral(APIstub, args)
+	    return s.FXTradeCollateral(APIstub, args)
+	} else if function == "UpdateFXTradeCollateral" {
+		return s.UpdateFXTradeCollateral(APIstub, args)	   
 	} else if function == "CreateCollateralDetail" {
 		return s.CreateCollateralDetail(APIstub, args)	   
     // MTM Price Functions
