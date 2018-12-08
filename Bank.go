@@ -198,7 +198,9 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	} else if function == "updateCptyAsset" {
 		return s.updateCptyAsset(APIstub, args)
     } else if function == "queryTXIDCptyAsset" {
-		return s.queryTXIDCptyAsset(APIstub, args)			
+		return s.queryTXIDCptyAsset(APIstub, args)		
+	} else if function == "CreateCashFlow" {
+		return s.CreateCashFlow(APIstub, args)				
 
 	//} else if function == "fetchEURUSDviaOraclize" {
 	//	return s.fetchEURUSDviaOraclize(APIstub)
@@ -229,7 +231,11 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	} else if function == "UpdateFXTradeCollateral" {
 		return s.UpdateFXTradeCollateral(APIstub, args)	   
 	} else if function == "CreateCollateralDetail" {
-		return s.CreateCollateralDetail(APIstub, args)	   
+		return s.CreateCollateralDetail(APIstub, args)	 
+	} else if function == "CollateralSettlment" {
+		return s.CollateralSettlment(APIstub, args)		
+	} else if function == "queryFXTradeCollateral" {
+		return s.queryFXTradeCollateral(APIstub, args)				  
     // MTM Price Functions
     } else if function == "createMTMPrice" {
 		return s.createMTMPrice(APIstub, args)
@@ -276,6 +282,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.queryCptyISDAStatus(APIstub, args)		
     } else if function == "queryCptyAssetStatus" {
 		return s.queryCptyAssetStatus(APIstub, args)	
+	} else if function == "queryCashFlowStatus" {
+		return s.queryCashFlowStatus(APIstub, args)			
 	} else if function == "queryMTMPrice" {
 		return s.queryMTMPrice(APIstub, args)		
 	} else if function == "queryBondPrice" {
@@ -802,7 +810,7 @@ func (s *SmartContract) queryAllCptyISDA(APIstub shim.ChaincodeStubInterface, ar
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryCptyISDAStatus","0002"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryCptyISDAStatus","0001"]}' -C myc
 func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {

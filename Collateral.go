@@ -57,6 +57,18 @@ type CollateralDetail struct {
 	CreateTime           string        `json:"createTime"`          // 建立時間
 }
 
+type CashFlow struct {
+	ObjectType           string        `json:"docType"`             // default set to "CashFlow"
+	TXID                 string        `json:"TXID"`                // 交易序號資料 
+	TXDATE               string        `json:"TXDATE"`              // 交易日期：TXDATE(YYYMMDD) 
+	OwnCptyID            string        `json:"OwnCptyID"`
+	CptyID               string        `json:"CptyID"`              // 交易對手
+	CashFlowType         string        `json:"CashFlowType"`        // CashFlow種類：FXTrade,Collateral
+	CashFlowDetail       string        `json:"CashFlowDetail`       // USDBond,TWDBond,AUD
+	CashFlowAmount       float64       `json:"CashFlowAmount"`      // CashFlow金額
+	FXTXID               string        `json:"FXTXID"`              // 交易序號資料 
+	CreateTime           string        `json:"createTime"`          // 建立時間
+}
 
 /*
 peer chaincode invoke -n mycc -c '{"Args":["FXTradeCollateral", "20181026","0001"]}' -C myc 
@@ -251,8 +263,55 @@ func (s *SmartContract) UpdateFXTradeCollateral(APIstub shim.ChaincodeStubInterf
 	return shim.Success(nil)
 }
 
+//peer chaincode invoke -n mycc -c '{"Args":["queryFXTradeCollateral", "20181208","00010002201812041256341"]}' -C myc 
+//CollateralDetail的FXTXID
+func (s *SmartContract) queryFXTradeCollateral(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
-//peer chaincode invoke -n mycc -c '{"Args":["CreateCollateralDetail", "20181026","0001","0002","TWD","Bond","A03108","10000","0.98","980","00010002201812041256341"]}' -C myc 
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"CollateralDetail\",\"TXDATE\":\"%s\",\"FXTXID\":\"%s\"}}", args[0],args[1])
+
+	fmt.Println("queryString= " + queryString + "\n") 
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+    defer resultsIterator.Close()
+    if err != nil {
+		fmt.Printf("- getQueryResultForQueryString resultsIterator error")
+        return shim.Error("Failed to GetQueryResult")
+    }
+    // buffer is a JSON array containing QueryRecords
+    var buffer bytes.Buffer
+	buffer.WriteString("[")
+	fmt.Printf("- getQueryResultForQueryString start buffer")
+    bArrayMemberAlreadyWritten := false
+    for resultsIterator.HasNext() {
+        queryResponse,
+        err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error("Failed to Next")
+        }
+        // Add a comma before array members, suppress it for the first array member
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+        }
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+        buffer.WriteString(", \"Record\":")
+        // Record is a JSON object, so we write as-is
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+    }
+	buffer.WriteString("]")
+	
+	return shim.Success(buffer.Bytes())
+}
+
+//peer chaincode invoke -n mycc -c '{"Args":["CreateCollateralDetail", "20181208","0001","0002","TWD","Cash","A03108","10000","0.98","980","00010002201812041256341"]}' -C myc 
+//peer chaincode invoke -n mycc -c '{"Args":["CreateCollateralDetail", "20181208","0001","0002","USD","Cash","A03108","70000","0.98","980","00010002201812041256341"]}' -C myc 
 func (s *SmartContract) CreateCollateralDetail(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	TimeNow := time.Now().Format(timelayout)
@@ -344,7 +403,7 @@ func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeS
     return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryCollateralDetailStatus","20181026","0001"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryCollateralDetailStatus","20181208","0001"]}' -C myc
 func (s *SmartContract) queryCollateralDetailStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -417,4 +476,205 @@ func (s *SmartContract) queryTXIDCollateral(APIstub shim.ChaincodeStubInterface,
 	}
 
 	return shim.Success(NewTXAsBytes)
+}
+
+
+/*
+peer chaincode invoke -n mycc -c '{"Args":["CollateralSettlment", "20181208","0001000220181208033623"]}' -C myc 
+每次只能交割一筆，所以要傳入CollateralDetail的TXID
+*/
+func (s *SmartContract) CollateralSettlment(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
+	
+	//TimeNow := time.Now().Format(timelayout)
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"CollateralDetail\",\"TXDATE\":\"%s\",\"TXID\":\"%s\"}}", args[0],args[1])
+
+	fmt.Println("queryString= " + queryString + "\n") 
+	
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+    defer resultsIterator.Close()
+    if err != nil {
+        return shim.Error("Failed to GetQueryResult")
+	}
+	
+	transactionArr := []CollateralDetail{}
+	var recint int64= 0
+	var CptyAssetID, CashFlowDetail string
+
+	for resultsIterator.HasNext() {
+
+        queryResponse,err := resultsIterator.Next()
+        if err != nil {
+			return shim.Error("Failed to Next")
+		}
+		fmt.Println("queryResponse.Key= " + queryResponse.Key + "\n") 
+	
+		jsonByteObj := queryResponse.Value
+		transaction := CollateralDetail{}
+		json.Unmarshal(jsonByteObj, &transaction)
+		transactionArr = append(transactionArr, transaction)
+
+		//讀取CptyAsset資料  
+		queryString2 := fmt.Sprintf("{\"selector\": {\"docType\":\"CptyAsset\",\"OwnCptyID\":\"%s\"}}", transactionArr[recint].OwnCptyID)
+        resultsIterator2, err2 := APIstub.GetQueryResult(queryString2)
+    	defer resultsIterator2.Close()
+    	if err2 != nil {
+        	return shim.Error("Failed to GetQueryResult")
+		}
+	    for resultsIterator2.HasNext() {
+			queryResponse2,err2 := resultsIterator2.Next()
+			if err2 != nil {
+				return shim.Error("Failed to Next")
+			}
+			fmt.Println("queryResponse2.Key= " + queryResponse2.Key + "\n") 
+			CptyAssetID = queryResponse2.Key 
+		}	
+		fmt.Println("CptyAssetID= " + CptyAssetID  + "\n") 
+		assetAsBytes, err := APIstub.GetState(CptyAssetID)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		assetTx := CptyAsset{}
+		json.Unmarshal(assetAsBytes, &assetTx)
+		//fmt.Println("assetAsBytes.USD= " + strconv.FormatFloat(assetTx.USD,'f', 4, 64) + "\n") 
+		//fmt.Println("assetAsBytes.OwnCptyID= " + assetTx.OwnCptyID + "\n") 
+		
+		fmt.Println("assetAsBytes.Curr= " + transactionArr[recint].Curr  + "\n") 
+		fmt.Println("assetAsBytes.CollateralType= " + transactionArr[recint].CollateralType + "\n") 
+		fmt.Println("assetAsBytes.Amount= " + strconv.FormatFloat(transactionArr[recint].Amount,'f', 4, 64) + "\n") 
+		
+		if transactionArr[recint].Curr ==  "USD" && transactionArr[recint].CollateralType ==  "Cash" {
+			assetTx.USD = assetTx.USD - transactionArr[recint].Amount
+			CashFlowDetail = "USD"
+		}
+		if transactionArr[recint].Curr ==  "TWD" && transactionArr[recint].CollateralType ==  "Cash" {
+			assetTx.TWD = assetTx.TWD - transactionArr[recint].Amount
+			CashFlowDetail = "TWD"
+		}
+		if transactionArr[recint].Curr ==  "USD" && transactionArr[recint].CollateralType ==  "Bond" {
+			assetTx.USDBond = assetTx.USDBond - transactionArr[recint].Amount
+			CashFlowDetail = "USDBond"
+		}
+		if transactionArr[recint].Curr ==  "TWD" && transactionArr[recint].CollateralType ==  "Bond" {
+			assetTx.TWDBond = assetTx.TWDBond - transactionArr[recint].Amount
+			CashFlowDetail = "TWDBond"
+		}
+		fmt.Println("assetAsBytes.TWD= " + strconv.FormatFloat(assetTx.TWD,'f', 4, 64) + "\n") 
+		assetAsBytes, err = json.Marshal(assetTx)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		err = APIstub.PutState(CptyAssetID, assetAsBytes)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		
+		response := s.CreateCashFlow(APIstub, []string{args[0], transactionArr[recint].OwnCptyID, transactionArr[recint].CptyID, "Collateral", CashFlowDetail, strconv.FormatFloat(transactionArr[recint].Amount,'f', 4, 64), args[1]})
+		   // if the transfer failed break out of loop and return error
+		if response.Status != shim.OK {
+			   return shim.Error("Transfer failed: " + response.Message)
+		}
+		if response.Status == shim.OK {
+			   fmt.Println("response.Status\n")
+		}
+		recint += 1 
+
+	}	
+	
+
+	return shim.Success(nil)
+}	
+
+func (s *SmartContract) CreateCashFlow(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	TimeNow := time.Now().Format(timelayout)
+	TimeNow2 := time.Now().Format(timelayout2)
+		
+	if len(args) < 7 {
+		return shim.Error("Incorrect number of arguments. Expecting 7")
+	}
+
+	TXDATE :=  args[0] 
+	OwnCptyID := args[1]
+	CptyID := args[2]
+	CashFlowType := args[3]
+	CashFlowDetail := args[4]
+	FXTXID := args[6]
+	CashFlowAmount, err := strconv.ParseFloat(args[5], 64)
+	if err != nil {
+		fmt.Println("Amount1 must be a numeric string.")
+	} else if CashFlowAmount < 0 {
+		fmt.Println("Amount1 must be a positive value.")
+	}
+   
+	TXID := args[1] + args[2] + TimeNow
+
+	var CashFlow = CashFlow{ObjectType: "CashFlow", TXID: TXID, TXDATE: TXDATE, OwnCptyID: OwnCptyID, CptyID: CptyID, CashFlowType: CashFlowType, CashFlowDetail:CashFlowDetail, CashFlowAmount: CashFlowAmount, FXTXID: FXTXID, CreateTime:TimeNow2}
+	CashFlowAsBytes, _ := json.Marshal(CashFlow)
+	err1 := APIstub.PutState(CashFlow.TXID, CashFlowAsBytes)
+	if err1 != nil {
+		fmt.Println("PutState.CashFlowAsBytes= " + err1.Error() + "\n")
+		return shim.Error(err1.Error())
+	}
+
+	return shim.Success(nil)
+}
+
+//peer chaincode query -n mycc -c '{"Args":["queryCashFlowStatus","20181208","0001"]}' -C myc
+func (s *SmartContract) queryCashFlowStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+	var queryString string
+
+	TXDATE := args[0]
+	CptyID := args[1]
+
+	if CptyID == "All" {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"CashFlow\",\"TXDATE\":\"%s\"}}", TXDATE)
+	}  else {	
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"CashFlow\",\"TXDATE\":\"%s\",\"OwnCptyID\":\"%s\"}}", TXDATE, CptyID)
+	}
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)" + queryString + "\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("resultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
+	bArrayMemberAlreadyWritten := false
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+		}
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+ 
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
 }

@@ -491,6 +491,7 @@ func (s *SmartContract) QueryFXTradeMTM(APIstub shim.ChaincodeStubInterface,args
 }	
 
 func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+	
 
 	TimeNow := time.Now().Format(timelayout)
 	TimeNow2 := time.Now().Format(timelayout2)
