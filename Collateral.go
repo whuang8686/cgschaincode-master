@@ -399,20 +399,25 @@ func (s *SmartContract) queryDayEndCollateralStatus(APIstub shim.ChaincodeStubIn
     return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryCollateralTransactionStatus","20181026","0001"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryCollateralTransactionStatus","20181026","Pending","0001"]}' -C myc
 func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
-	if len(args) != 2 {
-		return shim.Error("Incorrect number of arguments. Expecting 2")
+	if len(args) != 3 {
+		return shim.Error("Incorrect number of arguments. Expecting 3")
 	}
 	var queryString string
 	TXDATE := args[0]
-	CptyID := args[1]
+	TXStatus := args[1]
+	CptyID := args[2]
 
-	if CptyID == "All" {		
+	if (CptyID == "All" && TXStatus == "All") {		
 		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\"}}", TXDATE)
-	} else {	
+	} else if (CptyID == "All" && TXStatus != "All") {	
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\",\"TXStatus\":\"%s\"}}", TXDATE, TXStatus)
+	} else if (CptyID != "All" && TXStatus == "All") {	
 		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\",\"OwnCptyID\":\"%s\"}}", TXDATE, CptyID)
+	} else if (CptyID != "All" && TXStatus != "All") {	
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\",\"TXStatus\":\"%s\",\"OwnCptyID\":\"%s\"}}", TXDATE, TXStatus, CptyID)
 	}
 	 	
 	resultsIterator, err := APIstub.GetQueryResult(queryString)

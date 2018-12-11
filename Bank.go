@@ -70,7 +70,7 @@ type Cpty struct {
 	ObjectType           string          `json:"docType"`             //docType is used to distinguish the various types of objects in state database
 	CptyID               string          `json:"CptyID"`
 	CptyName             string          `json:"CptyName"`
-	CptyStatus           string          `json:"CptyStatus"`          //Lock flag,defaut=false
+	CptyStatus           string          `json:"CptyStatus"`          //Lock, Normal
 }
 
 
@@ -473,11 +473,11 @@ func (s *SmartContract) createCpty(APIstub shim.ChaincodeStubInterface, args []s
 	return shim.Success(nil)
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["updateCpty", "0001","CptyAA","false"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["updateCpty", "0001","Lock"]}' -C myc
 func (s *SmartContract) updateCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
-	if len(args) != 3 {
-		return shim.Error("Incorrect number of arguments. Expecting 3")
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 
 	// 判斷是否有輸入值 
@@ -487,8 +487,7 @@ func (s *SmartContract) updateCpty(APIstub shim.ChaincodeStubInterface, args []s
 
 	json.Unmarshal(CptyAsBytes, &Cpty)
 	Cpty.ObjectType = "Cpty"
-	Cpty.CptyName = args[1]
-	Cpty.CptyStatus = args[2]
+	Cpty.CptyStatus = args[1]
 	
 	CptyAsBytes, _ = json.Marshal(Cpty)
 	err := APIstub.PutState(args[0], CptyAsBytes)
