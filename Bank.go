@@ -277,7 +277,9 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	} else if function == "queryCollateralTransactionStatus" {
 		return s.queryCollateralTransactionStatus(APIstub, args)		
 	} else if function == "queryCollateralDetailStatus" {
-		return s.queryCollateralDetailStatus(APIstub, args)				
+		return s.queryCollateralDetailStatus(APIstub, args)			
+	} else if function == "queryDayEndCollateralStatus" {
+		return s.queryDayEndCollateralStatus(APIstub, args)					
 	} else if function == "queryCptyISDAStatus" {
 		return s.queryCptyISDAStatus(APIstub, args)		
     } else if function == "queryCptyAssetStatus" {
@@ -1309,12 +1311,12 @@ func GetOutboundIP() string {
 }
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "192.168.50.191","20181126"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createMTMPrice", "192.168.50.196","20181210"]}' -C myc
 */
 func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 	// http://127.0.0.2:8080/?datadate=20181025&curr1=USD&curr2=TWD
-	ipaddress := GetOutboundIP()
-	fmt.Println("getrate.GetOutboundIP= " + ipaddress + "\n")
+	// ipaddress := GetOutboundIP()
+	// fmt.Println("getrate.GetOutboundIP= " + ipaddress + "\n")
 	
 	CurrencyPair := []string{"AUDHKD","AUDTWD","AUDUSD","CADHKD","CADTWD","CHFHKD","CHFTWD","CNYHKD","CNYTWD","EURAUD","EURCNY","EURGBP","EURHKD","EURJPY","EURTWD","EURUSD","EURZAR","GBPHKD","GBPJPY","GBPTWD","GBPUSD","HKDJPY","HKDTWD","JPYTWD","MYRHKD","MYRTWD","NZDHKD","NZDTWD","NZDUSD","PHPTWD","SEKTWD","SGDHKD","SGDTWD","THBHKD","USDBRL","USDCAD","USDCHF","USDCNH","USDHKD","USDINR","USDJPY","USDKRW","USDMOP","USDMYR","USDPHP","USDSEK","USDSGD","USDTHB","USDTWD","USDZAR","ZARHKD","ZARTWD"}
     PairMTM := []string{}
@@ -1332,7 +1334,7 @@ func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args
     	if err != nil {
         	fmt.Println(err)
 		}
-		//fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
+		fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
 		//PairMTM =  append(PairMTM, strings.Replace(string(body)," ","",-1)) 
 		PairMTM =  append(PairMTM, strings.Replace(strings.Replace(string(body),"\n","",-1)," ","",-1)) 
 	}	
@@ -1568,7 +1570,7 @@ func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args
 
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["createBondPrice", "192.168.50.191","20181126"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createBondPrice", "192.168.50.196","20181210"]}' -C myc
 */
 func (s *SmartContract) createBondPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 	// http://192.168.0.28:8080/?datadate=20181121&TWDBOND=A03108

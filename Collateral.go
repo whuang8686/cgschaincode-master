@@ -348,6 +348,57 @@ func (s *SmartContract) CreateCollateralDetail(APIstub shim.ChaincodeStubInterfa
 }
 
 
+//peer chaincode query -n mycc -c '{"Args":["queryDayEndCollateralStatus","20181026"]}' -C myc
+//查詢當天未Settlment的資料
+func (s *SmartContract) queryDayEndCollateralStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	TXDATE := args[0]
+
+	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Collateral\",\"TXDATE\":\"%s\",\"TXStatus\":\"Pending\"}}", TXDATE)
+	 	
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)" + queryString + "\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("resultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
+	bArrayMemberAlreadyWritten := false
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+		}
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+ 
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
+}
+
 //peer chaincode query -n mycc -c '{"Args":["queryCollateralTransactionStatus","20181026","0001"]}' -C myc
 func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
@@ -402,6 +453,7 @@ func (s *SmartContract) queryCollateralTransactionStatus(APIstub shim.ChaincodeS
  
     return shim.Success(buffer.Bytes())
 }
+
 
 //peer chaincode query -n mycc -c '{"Args":["queryCollateralDetailStatus","20181208","0001"]}' -C myc
 func (s *SmartContract) queryCollateralDetailStatus(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
@@ -588,6 +640,8 @@ func (s *SmartContract) CollateralSettlment(APIstub shim.ChaincodeStubInterface,
 
 	return shim.Success(nil)
 }	
+
+
 
 func (s *SmartContract) CreateCashFlow(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
