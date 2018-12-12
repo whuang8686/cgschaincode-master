@@ -71,6 +71,7 @@ type Cpty struct {
 	CptyID               string          `json:"CptyID"`
 	CptyName             string          `json:"CptyName"`
 	CptyStatus           string          `json:"CptyStatus"`          //Lock, Normal
+	UpdateTime           string          `json:"updateTime"`          //更新時間	
 }
 
 
@@ -454,16 +455,19 @@ func (s *SmartContract) mapFunction(stub shim.ChaincodeStubInterface, function s
 	}
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0001","CptyA","false"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0002","CptyB","false"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0003","CptyC","false"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0001","CptyA","Normal"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0002","CptyB","Normal"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0003","CptyC","Normal"]}' -C myc
 func (s *SmartContract) createCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+	
+	TimeNow2 := time.Now().Format(timelayout2)
 
 	if len(args) != 3 {
 		return shim.Error("Incorrect number of arguments. Expecting 3")
 	}
 
-	var Cpty = Cpty{ObjectType: "Cpty", CptyID: args[0], CptyName: args[1], CptyStatus: args[2]}
+	fmt.Sprintf(TimeNow2)
+	var Cpty = Cpty{ObjectType: "Cpty", CptyID: args[0], CptyName: args[1], CptyStatus: args[2], UpdateTime:TimeNow2}
 	CptyAsBytes, _ := json.Marshal(Cpty)
 	err := APIstub.PutState(Cpty.CptyID, CptyAsBytes)
 	if err != nil {
@@ -488,6 +492,7 @@ func (s *SmartContract) updateCpty(APIstub shim.ChaincodeStubInterface, args []s
 	json.Unmarshal(CptyAsBytes, &Cpty)
 	Cpty.ObjectType = "Cpty"
 	Cpty.CptyStatus = args[1]
+	Cpty.UpdateTime = time.Now().Format(timelayout2)
 	
 	CptyAsBytes, _ = json.Marshal(Cpty)
 	err := APIstub.PutState(args[0], CptyAsBytes)
@@ -520,9 +525,51 @@ func (s *SmartContract) queryCpty(APIstub shim.ChaincodeStubInterface, args []st
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
+    var queryString string
+	CptyID := args[0]
+	if CptyID == "All" {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Cpty\"}}")
+	}  else {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Cpty\",\"CptyID\":\"%s\"}}", CptyID)	
+	}	
 
-	CptyAsBytes, _ := APIstub.GetState(args[0])
-	return shim.Success(CptyAsBytes)
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("esultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
+	bArrayMemberAlreadyWritten := false
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+		}
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+	}
+	
+    buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
 }
 
 //peer chaincode query -n mycc -c '{"Args":["queryAllCpty","0001","9999"]}' -C myc
