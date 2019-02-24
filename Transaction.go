@@ -286,6 +286,8 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 			if transactionArr[recint].Curr1 ==  "ZAR" {
 				assetTx.ZAR = assetTx.ZAR + transactionArr[recint].Amount1
 			}
+		}	else {
+
 			if transactionArr[recint].Curr1 ==  "AUD" {
 				assetTx.AUD = assetTx.AUD - transactionArr[recint].Amount1
 			}
@@ -358,6 +360,18 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		if err != nil {
 			return shim.Error(err.Error())
 		}
+		//新增CashFlow
+		/*
+		response := s.CreateCashFlow(APIstub, []string{args[0], transactionArr[recint].OwnCptyID, transactionArr[recint].CptyID, "FXTrade", transactionArr[recint].Curr1, strconv.FormatFloat(transactionArr[recint].Amount1,'f', 4, 64), strconv.FormatFloat(transactionArr[recint].TXID)})
+		   // if the transfer failed break out of loop and return error
+		if response.Status != shim.OK {
+			   return shim.Error("Transfer failed: " + response.Message)
+		}
+		if response.Status == shim.OK {
+			   fmt.Println("response.Status\n")
+		}
+		*/
+
         //更新FXTrade狀態 
 		err = updateTransactionStatusbyTXID(APIstub, queryResponse.Key, "Finished")
 

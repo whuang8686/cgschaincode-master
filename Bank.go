@@ -67,13 +67,22 @@ const (
 
 
 type Cpty struct {
-	ObjectType           string          `json:"docType"`             //docType is used to distinguish the various types of objects in state database
+	ObjectType           string          `json:"docType"`             //Cpty
 	CptyID               string          `json:"CptyID"`
 	CptyName             string          `json:"CptyName"`
-	CptyStatus           string          `json:"CptyStatus"`          //Lock, Normal
+	CptyStatus           string          `json:"CptyStatus"`          //Lock, Active
 	UpdateTime           string          `json:"updateTime"`          //更新時間	
 }
 
+type User struct {
+	ObjectType           string          `json:"docType"`             //User
+	UserID               string          `json:"UserID"`              //CptyID + TimeNow 0001 + 20190224105134
+	CptyID               string          `json:"CptyID"`                             
+	UserName             string          `json:"UserName"`
+	Password             string          `json:"Password"`
+	UserStatus           string          `json:"UserStatus"`          //Lock, Active
+	UpdateTime           string          `json:"updateTime"`          //更新時間	
+}
 
 type CptyISDA struct {
 	ObjectType           string          `json:"docType"`             //CptyISDA
@@ -179,7 +188,14 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	} else if function == "queryCpty"  {
 		return s.queryCpty(APIstub, args)	
 	} else if function == "queryAllCpty" {
-		return s.queryAllCpty(APIstub, args)		
+		return s.queryAllCpty(APIstub, args)	
+	//User
+	} else if function == "createUser" {
+		return s.createUser(APIstub, args)		
+	} else if function == "updateUser" {
+		return s.updateUser(APIstub, args)			
+	} else if function == "queryUser" {
+		return s.queryUser(APIstub, args)			
 	//CptyISDA
 	} else if function == "createCptyISDA" {
 		return s.createCptyISDA(APIstub, args)
@@ -293,8 +309,11 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 		return s.queryBondPrice(APIstub, args)			
 	} else if function == "updateQueuedTransactionHcode" {
 	    return s.updateQueuedTransactionHcode(APIstub, args)
-	 } else if function == "updateHistoryTransactionHcode" {
-	    return s.updateHistoryTransactionHcode(APIstub, args)	
+	} else if function == "updateHistoryTransactionHcode" {
+		return s.updateHistoryTransactionHcode(APIstub, args)	
+	} else if function == "testEvent" {
+		return s.testEvent(APIstub, args)	
+			
 	} else {
     //map functions
 		return s.mapFunction(APIstub, function, args)
@@ -302,6 +321,16 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 
 	return shim.Error("Invalid Smart Contract function name.")
 }
+
+//peer chaincode invoke -n mycc -c '{"Args":["testEvent"]}' -C myc
+func (s *SmartContract) testEvent(stub shim.ChaincodeStubInterface, args []string) peer.Response{
+	tosend := "Event send data is here!"
+	err := stub.SetEvent("evtsender", []byte(tosend))
+	if err != nil {
+	   return shim.Error(err.Error())
+	}
+	return shim.Success(nil)
+ }
 
 func (s *SmartContract) mapFunction(stub shim.ChaincodeStubInterface, function string, args []string) peer.Response {
 	switch function {
@@ -455,9 +484,9 @@ func (s *SmartContract) mapFunction(stub shim.ChaincodeStubInterface, function s
 	}
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0001","CptyA","Normal"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0002","CptyB","Normal"]}' -C myc
-//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0003","CptyC","Normal"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0001","CptyA","Active"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0002","CptyB","Active"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createCpty", "0003","CptyC","Active"]}' -C myc
 func (s *SmartContract) createCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 	
 	TimeNow2 := time.Now().Format(timelayout2)
@@ -617,6 +646,108 @@ func (s *SmartContract) queryAllCpty(APIstub shim.ChaincodeStubInterface, args [
 	fmt.Printf("%s", buffer.String())
 
 	return shim.Success(buffer.Bytes())
+}
+
+//peer chaincode invoke -n mycc -c '{"Args":["createUser", "0001","Cpty1User1","Cpty1Pass1","Active"]}' -C myc
+func (s *SmartContract) createUser(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+	
+	TimeNow := time.Now().Format(timelayout)
+	TimeNow2 := time.Now().Format(timelayout2)
+
+	if len(args) != 4 {
+		return shim.Error("Incorrect number of arguments. Expecting 4")
+	}
+
+	UserID := args[0] + TimeNow 
+	//fmt.Sprintf(TimeNow2)
+	var User = User{ObjectType: "User", UserID: UserID, CptyID: args[0], UserName: args[1], Password: args[2], UserStatus: args[3], UpdateTime:TimeNow2}
+	UserAsBytes, _ := json.Marshal(User)
+	err := APIstub.PutState(User.UserID, UserAsBytes)
+	if err != nil {
+		return shim.Error("Failed to create state")
+	}
+
+	return shim.Success(nil)
+}
+
+//peer chaincode invoke -n mycc -c '{"Args":["updateUser", "000120190224105134","Cpty1User1","Cpty1Pass2","Active"]}' -C myc
+func (s *SmartContract) updateUser(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 4 {
+		return shim.Error("Incorrect number of arguments. Expecting 4")
+	}
+
+	UserAsBytes, _ := APIstub.GetState(args[0])
+	User := User{}
+
+	json.Unmarshal(UserAsBytes, &User)
+	User.ObjectType = "User"
+	User.UserName = args[1]
+	User.Password = args[2]
+	User.UserStatus = args[3]
+	User.UpdateTime = time.Now().Format(timelayout2)
+	
+	UserAsBytes, _ = json.Marshal(User)
+	err := APIstub.PutState(args[0], UserAsBytes)
+	if err != nil {
+		return shim.Error("Failed to change state")
+	}
+
+	return shim.Success(nil)
+}
+
+//peer chaincode query -n mycc -c '{"Args":["queryUser","0001","Cpty1User1"]}' -C myc
+func (s *SmartContract) queryUser(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+    var queryString string
+	CptyID := args[0]
+	UserName := args[1]
+	if CptyID == "All" {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"User\"}}")
+	}  else {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"User\",\"CptyID\":\"%s\",\"UserName\":\"%s\"}}", CptyID, UserName)	
+	}	
+
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
+	fmt.Printf("APIstub.GetQueryResult(queryString)\n")
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+	defer resultsIterator.Close()
+	fmt.Printf("esultsIterator.Close")
+ 
+    var buffer bytes.Buffer
+    buffer.WriteString("[")
+ 
+	bArrayMemberAlreadyWritten := false
+	fmt.Printf("bArrayMemberAlreadyWritten := false\n")
+    for resultsIterator.HasNext() {
+        queryResponse, err := resultsIterator.Next()
+        if err != nil {
+            return shim.Error(err.Error())
+        }
+         
+        if bArrayMemberAlreadyWritten == true {
+            buffer.WriteString(",")
+		}
+		fmt.Printf("resultsIterator.HasNext\n")
+        buffer.WriteString("{\"Key\":")
+        buffer.WriteString("\"")
+        buffer.WriteString(queryResponse.Key)
+        buffer.WriteString("\"")
+        buffer.WriteString(", \"Record\":")
+         
+        buffer.WriteString(string(queryResponse.Value))
+        buffer.WriteString("}")
+        bArrayMemberAlreadyWritten = true
+	}
+	
+    buffer.WriteString("]")
+ 
+    return shim.Success(buffer.Bytes())
 }
 
 /*
