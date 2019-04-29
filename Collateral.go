@@ -71,7 +71,7 @@ type CashFlow struct {
 }
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeCollateral", "20181026","0001"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeCollateral", "20181026","BANK1"]}' -C myc 
 peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"MTMTX\",\"TXKEY\":\"MTM20180928\"}}"]}' -C myc
 */
 func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
@@ -86,7 +86,7 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 	TXDATE := args[0]
 	OwnCptyID := args[1]
 
-	var recint int64= 0
+	//var recint int64= 0
 	var recint1 int64= 0
 	var i int64= 0
 	var MarginCall float64=0
@@ -116,11 +116,12 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 		transactionArr1 = append(transactionArr1, cptyisda)
 
 		fmt.Println("transactionArr[recint].CptyISDA.CptyID= " + transactionArr1[recint1].CptyID  + "\n")
-		CptyID, err := strconv.ParseInt(strings.Replace(transactionArr1[recint1].CptyID,"0","",-1) ,10, 64)
+		//CptyID, err := strconv.ParseInt(strings.Replace(transactionArr1[recint1].CptyID,"0","",-1) ,10, 64)
+		CptyID, err := strconv.ParseInt(string(transactionArr1[recint1].CptyID[len(transactionArr1[recint1].CptyID)-1:]),10, 64)
    		if err != nil {
 			return shim.Error("Failed to strconv.Atoi")
 		}
-		fmt.Println("transactionArr[recint].val.CptyID= " + strings.Replace(transactionArr1[recint1].CptyID,"0","",-1) + "\n")		
+		fmt.Println("transactionArr[recint].val.CptyID= " + string(transactionArr1[recint1].CptyID[len(transactionArr1[recint1].CptyID)-1:]) + "\n")		
 			
 		ownthreshold[CptyID-1] = transactionArr1[recint1].OwnThreshold
 		cptymta[CptyID-1] = transactionArr1[recint1].CptyMTA
@@ -160,16 +161,17 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 			fmt.Println("transactionArr[recint].val.OwnCptyID= " + transaction.TransactionsMTM[key].OwnCptyID  + "\n")
 			fmt.Println("transactionArr[recint].val.CptyID= " + strings.Replace(transaction.TransactionsMTM[key].CptyID,"0","",-1) + "\n")		
 			fmt.Println("transactionArr[recint].val.MTM= " + strconv.FormatFloat(transaction.TransactionsMTM[key].MTM ,'f', 4, 64) + "\n")
-			CptyID, err := strconv.ParseInt(strings.Replace(transaction.TransactionsMTM[key].CptyID,"0","",-1) ,10, 64)
+			//CptyID, err := strconv.ParseInt(strings.Replace(transaction.TransactionsMTM[key].CptyID,"0","",-1) ,10, 64)
+			CptyID, err := strconv.ParseInt(string(transaction.TransactionsMTM[key].CptyID[len(transaction.TransactionsMTM[key].CptyID)-1:]),10, 64)
    			if err != nil {
 				return shim.Error("Failed to strconv.Atoi")
    			}
-			fmt.Println("transactionArr[recint].val.CptyID= " + strconv.FormatInt(CptyID-1,16) + "\n")
+			fmt.Println("2.transactionArr[recint].val.CptyID= " + strconv.FormatInt(CptyID-1,16) + "\n")
 			if transaction.TransactionsMTM[key].OwnCptyID == OwnCptyID {
 				summtm[CptyID-1] += transaction.TransactionsMTM[key].MTM 
 			}
 		}	
-        recint++
+        
 	}	
 	for i = 0; i < 10 ; i++ {
 		fmt.Println("array.ownthreshold= " + strconv.FormatInt(ownthreshold[i] ,10) + "\n")
@@ -185,7 +187,8 @@ func (s *SmartContract) FXTradeCollateral(APIstub shim.ChaincodeStubInterface,ar
 			//	fmt.Printf(errStr)
 			//	return shim.Error(errStr)
 			//} 
-			CptyID := fmt.Sprintf("%04d", i+1)
+			//CptyID := fmt.Sprintf("%04d", i+1)
+			CptyID := fmt.Sprintf("BANK%d", i+1)
 			if err != nil {
 				return shim.Error("Failed to convert CptyID")
 			}

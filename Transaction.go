@@ -457,7 +457,7 @@ func (s *SmartContract) FXTradeMTM(APIstub shim.ChaincodeStubInterface,args []st
 	return shim.Success([]byte(totalrecintString))
 }	
 
-//peer chaincode invoke -n mycc -c '{"Args":["QueryFXTradeMTM", "20181012"]}' -C myc 
+//peer chaincode invoke -n mycc -c '{"Args":["QueryFXTradeMTM", "20190424"]}' -C myc 
 func (s *SmartContract) QueryFXTradeMTM(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {
 	
 	TXKEY := args[0]
@@ -603,37 +603,18 @@ func (s *SmartContract) CreateFXTradeMTM(APIstub shim.ChaincodeStubInterface, ar
 }
 
 
-//peer chaincode invoke -n mycc -c '{"Args":["deleteFXTradeMTM", "MTM20181012"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["deleteFXTradeMTM", "MTM20190426"]}' -C myc
 func (s *SmartContract) deleteFXTradeMTM(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
 
-	startKey := args[0] 
-	endKey := args[0] + "9999999"
-
-	resultsIterator, err := APIstub.GetStateByRange(startKey, endKey)
-    defer resultsIterator.Close()
-    if err != nil {
-        return shim.Error("Failed to GetQueryResult")
-	}
-	for resultsIterator.HasNext() {
-		queryResponse,err := resultsIterator.Next()
-		if err != nil {
-			return shim.Error("Failed to Next")
-		}
-		fmt.Println("queryResponse.Key= " + queryResponse.Key + "\n") 
-		err = APIstub.DelState(queryResponse.Key)
-		if err != nil {
-			return shim.Error("Failed to delete state")
-		}
+	err := APIstub.DelState(args[0])
+	if err != nil {
+		return shim.Error("Failed to delete state")
 	}
 
-	
-
-	// Delete the key from the state in ledger
-	
 	return shim.Success(nil)
 }
 
@@ -872,8 +853,8 @@ peer chaincode invoke -n mycc -c '{"Args":["submitApproveTransaction", "BANK002S
 } */
 
 /* FXTrade交易比對
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","0001","0002","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","26","SPOT","true"]}' -C myc 
-peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","0002","0001","2018/01/01","2018/12/30","USD/TWD","USD","1000000","TWD","1000000","30","SPOT","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "S","Bank1","Bank2","2018/01/01","2019/12/30","USD/TWD","USD","1000000","TWD","1000000","30","SPOT","true"]}' -C myc 
+peer chaincode invoke -n mycc -c '{"Args":["FXTradeTransfer", "B","Bank1","Bank2","2018/01/01","2019/12/30","USD/TWD","USD","1000000","TWD","1000000","26","SPOT","true"]}' -C myc 
 */
 
 func (s *SmartContract) FXTradeTransfer(APIstub shim.ChaincodeStubInterface,args []string) peer.Response {

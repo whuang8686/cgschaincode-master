@@ -149,16 +149,15 @@ type FXTrade struct {
 	Curr2                string          `json:"Curr2"`               //Curr2
 	Amount2              float64         `json:"Amount2"`             //Amount2
 	NetPrice             float64         `json:"NetPrice"`            //合約價
-	
-	isPutToQueue         bool             `json:"isPutToQueue"`       //isPutToQueue = true 代表資料檢核成功
-	TXStatus             string           `json:"TXStatus"`           //Pending, Matched, Finished, Cancelled, PaymentError,
-	CreateTime           string           `json:"createTime"`         //建立時間
-	UpdateTime           string           `json:"updateTime"`         //更新時間
-	TXIndex              string           `json:"TXIndex"`            //Transaction Index(全部比對)
-	TXHcode              string           `json:"TXHcode"`            //Transaction Hcode(更正交易序號)
-	MatchedTXID          string           `json:"MatchedTXID"`        //比對序號 OwnCptyID(後來新增的)+TXType+TimeNow 0002S20180829063021
-	TXMemo               string           `json:"TXMemo"`             //交易說明
-	TXErrMsg             string           `json:"TXErrMsg"`           //交易錯誤說明
+	isPutToQueue         bool            `json:"isPutToQueue"`        //isPutToQueue = true 代表資料檢核成功
+	TXStatus             string          `json:"TXStatus"`            //Pending, Matched, Finished, Cancelled
+	CreateTime           string          `json:"createTime"`          //建立時間
+	UpdateTime           string          `json:"updateTime"`          //更新時間
+	TXIndex              string          `json:"TXIndex"`             //Transaction Index(全部比對)
+	TXHcode              string          `json:"TXHcode"`             //Transaction Hcode(更正交易序號)
+	MatchedTXID          string          `json:"MatchedTXID"`         //比對序號 OwnCptyID(後來新增的)+TXType+TimeNow 0002S20180829063021
+	TXMemo               string          `json:"TXMemo"`              //交易說明
+	TXErrMsg             string          `json:"TXErrMsg"`            //交易錯誤說明
 }
 
 /*
@@ -496,6 +495,7 @@ func (s *SmartContract) createCpty(APIstub shim.ChaincodeStubInterface, args []s
 	}
 
 	fmt.Sprintf(TimeNow2)
+	
 	var Cpty = Cpty{ObjectType: "Cpty", CptyID: args[0], CptyName: args[1], CptyStatus: args[2], UpdateTime:TimeNow2}
 	CptyAsBytes, _ := json.Marshal(Cpty)
 	err := APIstub.PutState(Cpty.CptyID, CptyAsBytes)
@@ -505,6 +505,7 @@ func (s *SmartContract) createCpty(APIstub shim.ChaincodeStubInterface, args []s
 
 	return shim.Success(nil)
 }
+
 
 //peer chaincode invoke -n mycc -c '{"Args":["updateCpty", "0001","Lock"]}' -C myc
 func (s *SmartContract) updateCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
@@ -601,10 +602,10 @@ func (s *SmartContract) queryCpty(APIstub shim.ChaincodeStubInterface, args []st
     return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryAllCpty","0001","9999"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryAllCpty"]}' -C myc
 func (s *SmartContract) queryAllCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
-	if len(args) != 2 {
+	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 	startKey := args[0]
