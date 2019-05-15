@@ -70,7 +70,7 @@ type Cpty struct {
 	ObjectType           string          `json:"docType"`             //Cpty
 	CptyID               string          `json:"CptyID"`
 	CptyName             string          `json:"CptyName"`
-	CptyStatus           string          `json:"CptyStatus"`          //Lock, Active
+	CptyStatus           string          `json:"CptyStatus"`          //Disable, Enable
 	UpdateTime           string          `json:"updateTime"`          //更新時間	
 }
 
@@ -80,7 +80,7 @@ type User struct {
 	CptyID               string          `json:"CptyID"`                             
 	UserName             string          `json:"UserName"`
 	Password             string          `json:"Password"`
-	UserStatus           string          `json:"UserStatus"`          //Lock, Active
+	UserStatus           string          `json:"UserStatus"`          //Disable, Enable, Pending
 	UpdateTime           string          `json:"updateTime"`          //更新時間	
 }
 
@@ -649,7 +649,7 @@ func (s *SmartContract) queryAllCpty(APIstub shim.ChaincodeStubInterface, args [
 	return shim.Success(buffer.Bytes())
 }
 
-//peer chaincode invoke -n mycc -c '{"Args":["createUser", "0001","Cpty1User1","Cpty1Pass1","Active"]}' -C myc
+//peer chaincode invoke -n mycc -c '{"Args":["createUser", "BANK1","BANK1User1","BANK1User1","Active"]}' -C myc
 func (s *SmartContract) createUser(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 	
 	TimeNow := time.Now().Format(timelayout)
@@ -697,7 +697,7 @@ func (s *SmartContract) updateUser(APIstub shim.ChaincodeStubInterface, args []s
 	return shim.Success(nil)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryUser","0001","Cpty1User1"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryUser","BANK1","BANK1User1"]}' -C myc
 func (s *SmartContract) queryUser(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 2 {
@@ -1748,16 +1748,17 @@ func (s *SmartContract) createMTMPrice(APIstub shim.ChaincodeStubInterface, args
 
 
 /*
-peer chaincode invoke -n mycc -c '{"Args":["createBondPrice", "192.168.50.196","20181210"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["createBondPrice", "172.20.10.13","20190515"]}' -C myc
 */
 func (s *SmartContract) createBondPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
-	// http://192.168.0.28:8080/?datadate=20181121&TWDBOND=A03108
+	// http://172.20.10.13:8080/?datadate=20181121&TWDBOND=A03108
 	ipaddress := GetOutboundIP()
 	fmt.Println("getrate.GetOutboundIP= " + ipaddress + "\n")
 	
 	TWDBond := []string{"A03108","A07110","A00104","A03107","A03114"}
 	USDBond := []string{"US46625HJZ47","US71647NAM11","XS11335850562","US25152RXA66","BBG00FYBLQH5"}
 	BondMTM := []string{}
+	
     for i:=0; i < len(TWDBond)  ; i++ {
 
 		queryString := "http://" + args[0] + ":8080/?datadate=" + args[1] + "&TWDBOND=" + TWDBond[i]
@@ -1772,7 +1773,7 @@ func (s *SmartContract) createBondPrice(APIstub shim.ChaincodeStubInterface, arg
     	if err != nil {
         	fmt.Println(err)
 		}
-		//fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
+		fmt.Println("getrate= " + TWDBond[i] + "=" + string(body) + "\n")
 		//PairMTM =  append(PairMTM, strings.Replace(string(body)," ","",-1)) 
 		BondMTM =  append(BondMTM, strings.Replace(strings.Replace(string(body),"\n","",-1)," ","",-1)) 
 	}	
@@ -1790,7 +1791,7 @@ func (s *SmartContract) createBondPrice(APIstub shim.ChaincodeStubInterface, arg
     	if err != nil {
         	fmt.Println(err)
 		}
-		//fmt.Println("getrate= " + CurrencyPair[i] + "=" + string(body) + "\n")
+		fmt.Println("getrate= " + USDBond[i] + "=" + string(body) + "\n")
 		//PairMTM =  append(PairMTM, strings.Replace(string(body)," ","",-1)) 
 		BondMTM =  append(BondMTM, strings.Replace(strings.Replace(string(body),"\n","",-1)," ","",-1)) 
 	}	
@@ -2044,7 +2045,7 @@ func queryMTMPriceByContract(APIstub shim.ChaincodeStubInterface, TXDATE string 
     return 0
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20181126"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryMTMPrice","20190515"]}' -C myc
 func (s *SmartContract) queryMTMPrice(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
