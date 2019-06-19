@@ -133,6 +133,11 @@ type CptyAsset struct {
 	ZAR                  float64         `json:"ZAR"`                 //ZAR
 }
 
+type TestCpty struct {
+	ObjectType   string        `json:"docType"`        // default set to "HistoryTX"
+	TXKEY        string        `json:"TXKEY"`          // 交易日期：TXDATE(HYYYYMMDD)
+	TXIDs        []string      `json:"TXIDs"`          // 交易序號資料
+}
 
 type FXTrade struct {
 	ObjectType           string          `json:"docType"`             //docType is used to distinguish the various types of objects in state database
@@ -180,6 +185,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 	// Route to the appropriate handler function to interact with the ledger appropriately
 	if function == "createCpty" {
 		return s.createCpty(APIstub, args)
+	} else if function == "createTestCpty" {
+			return s.createTestCpty(APIstub, args)		
 	} else if function == "updateCpty" {
 		return s.updateCpty(APIstub, args)
     } else if function == "deleteCpty" {
@@ -323,6 +330,7 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) peer.Respons
 
 //peer chaincode invoke -n mycc -c '{"Args":["testEvent"]}' -C myc
 func (s *SmartContract) testEvent(stub shim.ChaincodeStubInterface, args []string) peer.Response{
+
 	tosend := "Event send data is here!"
 	err := stub.SetEvent("evtsender", []byte(tosend))
 	if err != nil {
@@ -330,6 +338,9 @@ func (s *SmartContract) testEvent(stub shim.ChaincodeStubInterface, args []strin
 	}
 	return shim.Success(nil)
  }
+
+
+
 
 func (s *SmartContract) mapFunction(stub shim.ChaincodeStubInterface, function string, args []string) peer.Response {
 	switch function {
@@ -506,6 +517,31 @@ func (s *SmartContract) createCpty(APIstub shim.ChaincodeStubInterface, args []s
 	return shim.Success(nil)
 }
 
+//peer chaincode invoke -n mycc -c '{"Args":["createTestCpty", "0001","CptyA","Active"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryTables","{\"selector\":{\"docType\":\"TestCpty\"}}"]}' -C myc
+func (s *SmartContract) createTestCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
+	
+	//TimeNow2 := time.Now().Format(timelayout2)
+	CptyAsBytes, err := APIstub.GetState("20190522")
+	
+	Testcpty := TestCpty{}
+	json.Unmarshal(CptyAsBytes, &Testcpty)
+
+	Testcpty.ObjectType = "TestCpty"
+	Testcpty.TXKEY ="20190522"
+	Testcpty.TXIDs = append(Testcpty.TXIDs, "0014")
+	Testcpty.TXIDs = append(Testcpty.TXIDs, "0015")
+	Testcpty.TXIDs = append(Testcpty.TXIDs, "0016")
+
+	CptyAsBytes, _ =json.Marshal(Testcpty)
+
+	err = APIstub.PutState(Testcpty.TXKEY, CptyAsBytes)
+	if err != nil {
+		return shim.Error("Failed to create state")
+	}
+
+	return shim.Success(nil)
+}
 
 //peer chaincode invoke -n mycc -c '{"Args":["updateCpty", "0001","Lock"]}' -C myc
 func (s *SmartContract) updateCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
@@ -549,18 +585,18 @@ func (s *SmartContract) deleteCpty(APIstub shim.ChaincodeStubInterface, args []s
 	return shim.Success(nil)
 }
 
-//peer chaincode query -n mycc -c '{"Args":["queryCpty","0001"]}' -C myc
+//peer chaincode query -n mycc -c '{"Args":["queryCpty","All"]}' -C myc
 func (s *SmartContract) queryCpty(APIstub shim.ChaincodeStubInterface, args []string) peer.Response {
 
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
     var queryString string
-	CptyID := args[0]
-	if CptyID == "All" {
+	CptyName := args[0]
+	if CptyName == "All" {
 		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Cpty\"}}")
 	}  else {
-		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Cpty\",\"CptyID\":\"%s\"}}", CptyID)	
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"Cpty\",\"CptyName\":\"%s\"}}", CptyName)	
 	}	
 
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
@@ -708,6 +744,8 @@ func (s *SmartContract) queryUser(APIstub shim.ChaincodeStubInterface, args []st
 	UserName := args[1]
 	if CptyID == "All" {
 		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"User\"}}")
+	} else if UserName == "All" {
+		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"User\",\"CptyID\":\"%s\"}}", CptyID)	
 	}  else {
 		queryString = fmt.Sprintf("{\"selector\":{\"docType\":\"User\",\"CptyID\":\"%s\",\"UserName\":\"%s\"}}", CptyID, UserName)	
 	}	

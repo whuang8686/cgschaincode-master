@@ -360,27 +360,30 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		if err != nil {
 			return shim.Error(err.Error())
 		}
+	
 		//新增CashFlow
-		/*
-		response := s.CreateCashFlow(APIstub, []string{args[0], transactionArr[recint].OwnCptyID, transactionArr[recint].CptyID, "FXTrade", transactionArr[recint].Curr1, strconv.FormatFloat(transactionArr[recint].Amount1,'f', 4, 64), strconv.FormatFloat(transactionArr[recint].TXID)})
-		   // if the transfer failed break out of loop and return error
+		response := s.CreateCashFlow(APIstub, []string{args[0], transactionArr[recint].OwnCptyID, transactionArr[recint].CptyID, "FXTrade", transactionArr[recint].Curr1, strconv.FormatFloat(transactionArr[recint].Amount1,'f', 4, 64), transactionArr[recint].TXID})
+		// if the transfer failed break out of loop and return error
 		if response.Status != shim.OK {
 			   return shim.Error("Transfer failed: " + response.Message)
 		}
 		if response.Status == shim.OK {
 			   fmt.Println("response.Status\n")
 		}
-		*/
+		
 
         //更新FXTrade狀態 
 		err = updateTransactionStatusbyTXID(APIstub, queryResponse.Key, "Finished")
 
 		//更新QueuedTransaction狀態 
-		err = updateQueuedTransactionStatus(APIstub, SubString(queryResponse.Key, 5, 8) , queryResponse.Key, "Finished") 
-		fmt.Println("updateQueuedTransactionStatus= " + SubString(queryResponse.Key, 5, 8) + "\n") 
+		//err = updateQueuedTransactionStatus(APIstub, SubString(queryResponse.Key, 5, 8) , queryResponse.Key, "Finished") 
+		err = updateQueuedTransactionStatus(APIstub, SubString(queryResponse.Key, 6, 8)  , queryResponse.Key, "Finished") 
+		fmt.Println("updateQueuedTransactionStatus= " + SubString(queryResponse.Key, 6, 8) + " " + queryResponse.Key + "\n") 
 
 		//更新TransactionHistory狀態 
-		err = updateHistoryTransactionStatus(APIstub, "H" + SubString(queryResponse.Key, 5, 8) , queryResponse.Key, "Finished") 		
+		//err = updateHistoryTransactionStatus(APIstub, "H" + SubString(queryResponse.Key, 5, 8) , queryResponse.Key, "Finished") 
+		err = updateHistoryTransactionStatus(APIstub, "H" + SubString(queryResponse.Key, 6, 8)  , queryResponse.Key, "Finished") 
+		
 
 		recint += 1 
 	}	
@@ -1393,9 +1396,12 @@ func updateQueuedTransactionStatus(APIstub shim.ChaincodeStubInterface, TXKEY st
 	doflg = false
 
 	for key, val := range queuedTX.TXIDs {
+		fmt.Printf("updateQueuedTransactionStatus val= %s\n", val)
+		fmt.Printf("updateQueuedTransactionStatus queuedTX.Transactions[key]= %s\n", queuedTX.Transactions[key])
 		if val == TXID {
 			queuedTX.Transactions[key].TXStatus = TXStatus
 			queuedTX.Transactions[key].UpdateTime = TimeNow2
+			fmt.Printf("updateQueuedTransactionStatus func= %s\n", TXID)
 			doflg = true
 			break
 		}
@@ -1864,6 +1870,7 @@ OwnCptyID不能修改，如要修改直接刪除後再新增
 	TXIndex := newTX.TXIndex
 	TXID := newTX.TXID
 	TXType := newTX.TXType
+	//TXKinds := newTX.TXKinds
 	OwnCptyID := newTX.OwnCptyID
 	TXStatus := newTX.TXStatus
 	TXHcode := newTX.TXHcode
@@ -2111,7 +2118,7 @@ func validateCorrectTransaction(
 	CptyID := strings.ToUpper(args[2])
 	TXHcode := OwnCptyID + TXType + TimeNow
 	transaction.TXID = TXHcode
-	
+	transaction.TXKinds = args[11]
 	if OwnCptyID == CptyID {
 		return transaction, false, "OwnCptyID equal to CptyID."
 	}
