@@ -1091,9 +1091,13 @@ func (s *SmartContract) queryCptyISDAStatus(APIstub shim.ChaincodeStubInterface,
             	return shim.Error(err.Error())
         	}
          
-        	if bArrayMemberAlreadyWritten2 == true {
-            buffer.WriteString(",")
-        	}
+			if bArrayMemberAlreadyWritten2 == true {
+				buffer.WriteString(",")
+			} else {
+				if bArrayMemberAlreadyWritten == true {
+					buffer.WriteString(",")
+				}
+			}
 			fmt.Printf("resultsIterator2.HasNext\n")
 			buffer.WriteString("{\"Key\":")
         	buffer.WriteString("\"")

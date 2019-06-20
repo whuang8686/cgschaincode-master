@@ -220,8 +220,11 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		assetTx := CptyAsset{}
 		json.Unmarshal(assetAsBytes, &assetTx)
 		fmt.Println("assetAsBytes.USD= " + strconv.FormatFloat(assetTx.USD,'f', 4, 64) + "\n") 
+		fmt.Println("assetAsBytes.EUR= " + strconv.FormatFloat(assetTx.EUR,'f', 4, 64) + "\n") 
 		fmt.Println("assetAsBytes.OwnCptyID= " + assetTx.OwnCptyID + "\n") 
-		
+		fmt.Println("transactionArr[recint].Curr1= " + transactionArr[recint].Curr1 + "\n") 
+		fmt.Println("transactionArr[recint].Curr2 " + transactionArr[recint].Curr2 + "\n") 
+		fmt.Println("transactionArr[recint].TXType= " + transactionArr[recint].TXType + "\n") 
 		if transactionArr[recint].TXType ==  "B" {
 			if transactionArr[recint].Curr1 ==  "AUD" {
 				assetTx.AUD = assetTx.AUD + transactionArr[recint].Amount1
@@ -286,8 +289,139 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 			if transactionArr[recint].Curr1 ==  "ZAR" {
 				assetTx.ZAR = assetTx.ZAR + transactionArr[recint].Amount1
 			}
+
+			//Amount2
+			if transactionArr[recint].Curr2 ==  "AUD" {
+				assetTx.AUD = assetTx.AUD - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "BRL" {
+				assetTx.BRL = assetTx.BRL - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "CAD" {
+				assetTx.CAD = assetTx.CAD - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "CHF" {
+				assetTx.CHF = assetTx.CHF - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "CNY" {
+				assetTx.CNY = assetTx.CNY - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "EUR" {
+				assetTx.EUR = assetTx.EUR - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "GBP" {
+				assetTx.GBP = assetTx.GBP - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "HKD" {
+				assetTx.HKD = assetTx.HKD - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "INR" {
+				assetTx.INR = assetTx.INR - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "JPY" {
+				assetTx.JPY = assetTx.JPY - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "KRW" {
+				assetTx.KRW = assetTx.KRW - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "KRW" {
+				assetTx.KRW = assetTx.KRW - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "MOP" {
+				assetTx.MOP = assetTx.MOP - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "NZD" {
+				assetTx.NZD = assetTx.NZD - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "PHP" {
+				assetTx.PHP = assetTx.PHP - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "SEK" {
+				assetTx.SEK = assetTx.SEK - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "SGD" {
+				assetTx.SGD = assetTx.SGD + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "THB" {
+				assetTx.THB = assetTx.THB - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "TWD" {
+				assetTx.TWD = assetTx.TWD - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "USD" {
+				assetTx.USD = assetTx.USD - transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "ZAR" {
+				assetTx.ZAR = assetTx.ZAR - transactionArr[recint].Amount2
+			}
+
 		}	else {
 
+			if transactionArr[recint].Curr2 ==  "AUD" {
+				assetTx.AUD = assetTx.AUD + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "BRL" {
+				assetTx.BRL = assetTx.BRL + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "CAD" {
+				assetTx.CAD = assetTx.CAD + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "CHF" {
+				assetTx.CHF = assetTx.CHF + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "CNY" {
+				assetTx.CNY = assetTx.CNY + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "EUR" {
+				assetTx.EUR = assetTx.EUR + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "GBP" {
+				assetTx.GBP = assetTx.GBP + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "HKD" {
+				assetTx.HKD = assetTx.HKD + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "INR" {
+				assetTx.INR = assetTx.INR + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "JPY" {
+				assetTx.JPY = assetTx.JPY + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "KRW" {
+				assetTx.KRW = assetTx.KRW + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "KRW" {
+				assetTx.KRW = assetTx.KRW + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "MOP" {
+				assetTx.MOP = assetTx.MOP + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "NZD" {
+				assetTx.NZD = assetTx.NZD + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "PHP" {
+				assetTx.PHP = assetTx.PHP + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "SEK" {
+				assetTx.SEK = assetTx.SEK + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "SGD" {
+				assetTx.SGD = assetTx.SGD + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "THB" {
+				assetTx.THB = assetTx.THB + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "TWD" {
+				assetTx.TWD = assetTx.TWD + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "USD" {
+				assetTx.USD = assetTx.USD + transactionArr[recint].Amount2
+			}
+			if transactionArr[recint].Curr2 ==  "ZAR" {
+				assetTx.ZAR = assetTx.ZAR + transactionArr[recint].Amount2
+			}
+
+			//Amount2
 			if transactionArr[recint].Curr1 ==  "AUD" {
 				assetTx.AUD = assetTx.AUD - transactionArr[recint].Amount1
 			}
@@ -362,14 +496,30 @@ func (s *SmartContract) FXTradeSettlment(APIstub shim.ChaincodeStubInterface,arg
 		}
 	
 		//新增CashFlow
-		response := s.CreateCashFlow(APIstub, []string{args[0], transactionArr[recint].OwnCptyID, transactionArr[recint].CptyID, "FXTrade", transactionArr[recint].Curr1, strconv.FormatFloat(transactionArr[recint].Amount1,'f', 4, 64), transactionArr[recint].TXID})
-		// if the transfer failed break out of loop and return error
-		if response.Status != shim.OK {
-			   return shim.Error("Transfer failed: " + response.Message)
+
+		if transactionArr[recint].TXType ==  "B" {
+			fmt.Println("transactionArr[recint].TXType= " + transactionArr[recint].TXType + "\n") 
+			response := s.CreateCashFlow(APIstub, []string{args[0], transactionArr[recint].OwnCptyID, transactionArr[recint].CptyID, "FXTrade", transactionArr[recint].Curr1, strconv.FormatFloat(transactionArr[recint].Amount1,'f', 4, 64), transactionArr[recint].TXID})
+			// if the transfer failed break out of loop and return error
+			if response.Status != shim.OK {
+				return shim.Error("Transfer failed: " + response.Message)
+	 		}
+	 		if response.Status == shim.OK {
+				fmt.Println("response.Status\n")
+			 }
+			
+		}else{
+			response := s.CreateCashFlow(APIstub, []string{args[0], transactionArr[recint].OwnCptyID, transactionArr[recint].CptyID, "FXTrade", transactionArr[recint].Curr2, strconv.FormatFloat(transactionArr[recint].Amount2,'f', 4, 64), transactionArr[recint].TXID})
+		 	// if the transfer failed break out of loop and return error
+			if response.Status != shim.OK {
+				return shim.Error("Transfer failed: " + response.Message)
+	 		}
+	 		if response.Status == shim.OK {
+				fmt.Println("response.Status\n")
+			 }
+			
 		}
-		if response.Status == shim.OK {
-			   fmt.Println("response.Status\n")
-		}
+		
 		
 
         //更新FXTrade狀態 
@@ -468,8 +618,8 @@ func (s *SmartContract) QueryFXTradeMTM(APIstub shim.ChaincodeStubInterface,args
 
 	//queryString= {"selector": {"docType":"Transaction","MaturityDate":{"$gte":"2018/10/12"}}}
     //queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"Transaction\",\"MaturityDate\":\"%s\"}}", args[0])
-	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"}}}", MaturityDate)
-
+	queryString := fmt.Sprintf("{\"selector\": {\"docType\":\"Transaction\",\"MaturityDate\":{\"$gte\":\"%s\"},\"TXStatus\":\"Matched\"}}", MaturityDate)
+	
 	fmt.Println("queryString= " + queryString + "\n") 
 	resultsIterator, err := APIstub.GetQueryResult(queryString)
     defer resultsIterator.Close()
